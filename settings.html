@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Settings — KiranaVaani</title>
+<meta name="description" content="Shop settings: name, UPI VPA, default language, voice speed, and the Sarvam AI key.">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header id="appNav"></header>
+
+<main class="page narrow">
+  <div class="page-head">
+    <div>
+      <h1>Settings</h1>
+      <p class="muted" id="shopSub"></p>
+    </div>
+  </div>
+
+  <section class="card">
+    <h2>Shop</h2>
+    <form id="shopForm" class="form">
+      <label class="field">
+        <span>Shop name</span>
+        <input id="shopName" type="text" autocomplete="off">
+      </label>
+      <label class="field">
+        <span>UPI VPA (for the payment QR)</span>
+        <input id="shopVpa" type="text" autocomplete="off" placeholder="yourshop@okhdfcbank">
+        <small class="muted">The QR on the counter encodes this VPA. Leave the demo VPA unless this is a real shop.</small>
+      </label>
+      <label class="field">
+        <span>Default language</span>
+        <select id="shopLang"></select>
+      </label>
+      <label class="field">
+        <span>Voice speed — <output id="speedVal">1.0×</output></span>
+        <input id="voiceSpeed" type="range" min="0.5" max="2" step="0.1" value="1">
+        <small class="muted">Applies to both the Sarvam voice (pace) and the Web Speech fallback (rate).</small>
+      </label>
+      <button class="btn primary" type="submit">Save shop settings</button>
+      <p class="muted small" id="shopSaved" hidden>Saved ✓ — the counter and dashboard use the new settings now.</p>
+    </form>
+  </section>
+
+  <section class="card">
+    <h2>Sarvam AI voice</h2>
+    <p class="muted">With a Sarvam key, the live counter speaks with Saaras (speech-to-text), sarvam-105b (conversation + tool calls) and Bulbul (voice). Without one it uses the free Web Speech API automatically.</p>
+    <div class="engine-status" id="engineStatus"></div>
+    <form id="keyForm" class="form">
+      <label class="field">
+        <span>Sarvam API key</span>
+        <input id="sarvamKey" type="password" autocomplete="off" placeholder="Paste your Sarvam API key">
+        <small class="muted" id="keyState">No key saved.</small>
+      </label>
+      <div class="form-row">
+        <button class="btn primary" type="submit">Save key</button>
+        <button class="btn ghost" id="removeKeyBtn" type="button">Remove key</button>
+      </div>
+      <p class="muted small">The key is stored only in this browser's localStorage — never in the project files, never sent anywhere except Sarvam's API. For a self-hosted deploy you can also put it in <code>sarvam.config.js</code> (copy <code>sarvam.config.example.js</code>) — that file is gitignored. A browser key is visible in devtools, so for a real production shop, proxy Sarvam through a small server instead.</p>
+      <p class="muted small">Get a key at <a href="https://dashboard.sarvam.ai" target="_blank" rel="noopener">dashboard.sarvam.ai</a> — sign up and create an API key.</p>
+    </form>
+  </section>
+</main>
+
+<footer class="foot">
+  <p>Settings are per shop — switch shops in the top bar to configure each one. The Sarvam key is shared across shops.</p>
+</footer>
+
+<script type="module" src="settings-page.js"></script>
+</body>
+</html>

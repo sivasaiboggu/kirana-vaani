@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KiranaVaani — Voice AI for kirana shops</title>
+<meta name="description" content="A voice agent for the kirana soundbox. Customers speak in Tamil, Telugu, Hindi, Kannada, English, Malayalam or Marathi — the agent takes the order, checks stock, suggests substitutes, keeps the bill and shows a UPI QR to pay.">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="landing-nav">
+  <a class="shell-brand" href="index.html">
+    <span class="shell-mark" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 7h12l1.5 13.5a1 1 0 0 1-1 1.1H5.5a1 1 0 0 1-1-1.1L6 7Z"/><path d="M9 10V6a3 3 0 0 1 6 0v4"/></svg></span>
+    <span class="shell-brand-text"><strong>KiranaVaani</strong><span class="shell-brand-sub"> · Voice AI for kirana shops</span></span>
+  </a>
+  <nav class="landing-links">
+    <a href="#how">How it works</a>
+    <a href="#languages">Languages</a>
+    <a href="#features">Features</a>
+    <a href="#cost">Cost</a>
+    <a href="dashboard.html">Dashboard</a>
+  </nav>
+  <div class="shell-right">
+    <label class="shop-switcher"><span>Shop</span><select id="shopSelect" aria-label="Switch shop"></select></label>
+    <span class="engine-badge" id="engineBadge">Voice: …</span>
+    <a class="btn primary" href="counter.html?demo=ta">Try the live counter</a>
+  </div>
+</header>
+
+<main>
+  <div class="demo-banner" id="demoBanner" hidden>
+    <span id="demoBannerText"></span>
+    <a class="btn primary" id="demoBannerLink" href="counter.html">Open the demo</a>
+  </div>
+
+  <section class="hero">
+    <div class="hero-copy">
+      <p class="eyebrow">Voice ordering for kirana shops</p>
+      <h1>Your shopkeeper now speaks <span class="accent">seven languages.</span></h1>
+      <p class="hero-sub">KiranaVaani is a voice agent for the kirana soundbox. A customer speaks in Tamil, Telugu, Hindi, Kannada, English, Malayalam or Marathi — the agent takes the order, checks stock, suggests a substitute when something is out, keeps the running bill, and shows a UPI QR to pay.</p>
+      <div class="hero-ctas">
+        <a class="btn primary big" href="counter.html?demo=ta">Try the live voice counter</a>
+        <a class="btn ghost big" href="dashboard.html">View the owner dashboard</a>
+      </div>
+      <div class="hero-stats">
+        <div><strong>7</strong><span>languages</span></div>
+        <div><strong>34</strong><span>items on the shelf</span></div>
+        <div><strong>UPI QR</strong><span>checkout</span></div>
+        <div><strong>0</strong><span>setup — runs in the browser</span></div>
+      </div>
+    </div>
+
+    <div class="hero-visual">
+      <div class="soundbox">
+        <div class="soundbox-head">
+          <span class="playback-label" id="heroShopLabel">Played back · Sri Lakshmi Stores, Chennai</span>
+          <span class="soundbox-timer" id="heroTimer">00:00</span>
+        </div>
+        <div class="wave" data-state="listening" aria-hidden="true">
+          <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+        </div>
+        <div class="hero-transcript" id="heroTranscript"></div>
+        <div class="hero-bill">
+          <span>Bill so far</span><strong id="heroBill">₹0.00</strong>
+        </div>
+        <p class="muted small">A real session, played back — open the counter to run it yourself.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="how">
+    <p class="eyebrow center">How it works</p>
+    <h2 class="section-title">Three steps, no app, no typing.</h2>
+    <div class="steps">
+      <div class="card step-card">
+        <span class="step-num">01</span>
+        <h3>Customer speaks</h3>
+        <p>“Aashirvaad atta 5 kg irukka?” — in Tamil, Telugu, Hindi, Kannada, English, Malayalam or Marathi, native script or Tanglish. The agent listens like a phone call: it speaks, then listens again, and the customer can interrupt it mid-sentence.</p>
+      </div>
+      <div class="card step-card">
+        <span class="step-num">02</span>
+        <h3>Agent checks &amp; suggests</h3>
+        <p>Stock is checked on the shelf. If Basmati is out, the agent offers Ponni instead — “shall I?” — and a “yes” adds it. The running bill updates with every item, and every missed request is logged as a restock signal.</p>
+      </div>
+      <div class="card step-card">
+        <span class="step-num">03</span>
+        <h3>Scan the QR &amp; pay</h3>
+        <p>“Bill” reads the itemised bill out loud; “pay” shows a UPI QR for the exact total. The customer scans with GPay, PhonePe or Paytm. The session summary — items, total, signals — lands on the owner dashboard.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="languages">
+    <p class="eyebrow center">Seven languages, one agent</p>
+    <h2 class="section-title">The customer speaks their language. The agent answers in it.</h2>
+    <div class="lang-grid">
+      <a class="card lang-card" href="counter.html?demo=ta">
+        <strong class="lang-native">தமிழ்</strong><span class="muted">Tamil</span>
+        <p>“ஆசீர்வாத் ஆட்டா 5 கிலோ இருக்கா?”</p>
+        <span class="try-link">Try in Tamil <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12h15"/><path d="M13 6l6 6-6 6"/></svg></span>
+      </a>
+      <a class="card lang-card" href="counter.html?demo=te">
+        <strong class="lang-native">తెలుగు</strong><span class="muted">Telugu</span>
+        <p>“ఆశీర్వాద్ గోధుమ పిండి 5 కిలోలు”</p>
+        <span class="try-link">Try in Telugu <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12h15"/><path d="M13 6l6 6-6 6"/></svg></span>
+      </a>
+      <a class="card lang-card" href="counter.html?demo=hi">
+        <strong class="lang-native">हिन्दी</strong><span class="muted">Hindi</span>
+        <p>“आशीर्वाद आटा 5 किलो”</p>
+        <span class="try-link">Try in Hindi <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12h15"/><path d="M13 6l6 6-6 6"/></svg></span>
+      </a>
+      <a class="card lang-card" href="counter.html?demo=kn">
+        <strong class="lang-native">ಕನ್ನಡ</strong><span class="muted">Kannada</span>
+        <p>“ಆಶೀರ್ವಾದ್ ಗೋಧಿ ಹಿಟ್ಟು 5 ಕಿಲೋ”</p>
+        <span class="try-link">Try in Kannada <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12h15"/><path d="M13 6l6 6-6 6"/></svg></span>
+      </a>
+      <a class="card lang-card" href="counter.html?demo=en">
+        <strong class="lang-native">English</strong><span class="muted">English</span>
+        <p>“Aashirvaad atta 5 kg please”</p>
+        <span class="try-link">Try in English <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12h15"/><path d="M13 6l6 6-6 6"/></svg></span>
+      </a>
+      <a class="card lang-card" href="counter.html?demo=ml">
+        <strong class="lang-native">മലയാളം</strong><span class="muted">Malayalam</span>
+        <p>“ആശിർവാദ് ആട്ട 5 കിലോ ഉണ്ടോ?”</p>
+        <span class="try-link">Try in Malayalam <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12h15"/><path d="M13 6l6 6-6 6"/></svg></span>
+      </a>
+      <a class="card lang-card" href="counter.html?demo=mr">
+        <strong class="lang-native">मराठी</strong><span class="muted">Marathi</span>
+        <p>“आशीर्वाद आटा 5 किलो पाहिजे”</p>
+        <span class="try-link">Try in Marathi <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12h15"/><path d="M13 6l6 6-6 6"/></svg></span>
+      </a>
+    </div>
+  </section>
+
+  <section class="section" id="features">
+    <p class="eyebrow center">Features</p>
+    <h2 class="section-title">A full shop counter, not a chatbot.</h2>
+    <div class="feature-grid">
+      <div class="card feature-card">
+        <span class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><path d="M12 17v4"/></svg></span>
+        <h3>Voice-first sessions</h3>
+        <p>Continuous turn-taking — the agent listens, thinks, speaks, then listens again. Barge-in: speak over the agent and it stops to hear you. Session timer, live transcript and a summary at the end.</p>
+      </div>
+      <div class="card feature-card">
+        <span class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8 12 3 3 8v8l9 5 9-5V8Z"/><path d="M3 8l9 5 9-5"/><path d="M12 13v8"/></svg></span>
+        <h3>Live stock check</h3>
+        <p>Every order is checked against the shelf before it is confirmed. Partial stock is handled honestly — “only 50 kg is left, I added that much.”</p>
+      </div>
+      <div class="card feature-card">
+        <span class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 2l4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/></svg></span>
+        <h3>Smart substitutes</h3>
+        <p>Out of stock? The agent suggests the nearest same-category item in stock and waits for a “yes”. No silent swaps, ever.</p>
+      </div>
+      <div class="card feature-card">
+        <span class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/></svg></span>
+        <h3>UPI QR checkout</h3>
+        <p>The bill total becomes a scannable UPI QR, generated on the device. Works with any UPI app; the shop's own VPA is set in Settings.</p>
+      </div>
+      <div class="card feature-card">
+        <span class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span>
+        <h3>Restock signals</h3>
+        <p>Every missed request is logged with the item, quantity and language — the shop sees exactly what customers asked for and could not get.</p>
+      </div>
+      <div class="card feature-card">
+        <span class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15v-4M12 17V7M17 13v-2"/></svg></span>
+        <h3>Owner dashboard</h3>
+        <p>Today's orders, revenue, top sellers, low-stock alerts and full voice-session history — across three demo shops you can switch between.</p>
+      </div>
+    </div>
+    <p class="muted small center">Voice: Sarvam AI (Saaras STT · sarvam-105b · Bulbul TTS) when a key is configured, otherwise the free Web Speech API — the switch is automatic.</p>
+  </section>
+
+  <section class="section" id="cost">
+    <p class="eyebrow center">What it costs</p>
+    <h2 class="section-title">Free to try. Honest about the rest.</h2>
+    <dl class="cost-list">
+      <div class="cost-row">
+        <dt>This demo</dt>
+        <dd>₹0. The whole thing runs in the browser — no account, no server, no sign-up. The three demo shops, the counter and the dashboard are all here.</dd>
+      </div>
+      <div class="cost-row">
+        <dt>Web Speech voice</dt>
+        <dd>Free. Built into Chrome and Edge; the counter uses it whenever no Sarvam key is set.</dd>
+      </div>
+      <div class="cost-row">
+        <dt>Sarvam voice</dt>
+        <dd>You bring your own key from dashboard.sarvam.ai. Sarvam bills you per use on their rates — nothing is added on top, and no subscription exists in this prototype.</dd>
+      </div>
+    </dl>
+    <p class="muted small center">No payments are wired in this prototype.</p>
+  </section>
+
+  <section class="cta-band">
+    <h2>Put a voice on your counter.</h2>
+    <p>Open the live counter, say an order in your language, and watch the bill build itself.</p>
+    <a class="btn primary big" href="counter.html?demo=ta">Try the live voice counter</a>
+  </section>
+</main>
+
+<footer class="foot">
+  <p>KiranaVaani — built from the #BuildForIndia Paytm Hackathon idea (Chennai edition). Voice: Sarvam AI when a key is configured, otherwise the free Web Speech API. No account, no server — it runs in the browser. <a href="dashboard.html">Dashboard</a> · <a href="counter.html">Live counter</a> · <a href="settings.html">Settings</a></p>
+</footer>
+
+<script type="module" src="landing.js"></script>
+</body>
+</html>

@@ -1,0 +1,3 @@
+# Sarvam API key — never commit this. Copy sarvam.config.example.js
+# to sarvam.config.js and paste your key there.
+sarvam.config.js

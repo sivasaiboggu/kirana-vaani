@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Live voice counter — KiranaVaani</title>
+<meta name="description" content="The live voice counter: a call-like voice session with a kirana shop. Speak in Tamil, Telugu, Hindi, Kannada or English — the agent takes your order, checks stock, suggests substitutes and shows a UPI QR.">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header id="appNav"></header>
+
+<main class="page">
+  <div class="page-head">
+    <div>
+      <h1 id="shopTitle">KiranaVaani</h1>
+      <p class="muted" id="shopSub"></p>
+    </div>
+    <div class="lang-switch" id="langSwitch" role="group" aria-label="Language"></div>
+  </div>
+
+  <div class="layout">
+    <section class="card call-card" id="callCard" data-state="idle">
+      <div class="card-head">
+        <div>
+          <h2 id="chatTitle">Talk to the shop</h2>
+          <p class="muted" id="voiceStatus">Checking voice support…</p>
+        </div>
+        <span class="state-badge state-idle" id="stateBadge">Idle</span>
+      </div>
+
+      <div class="call-stage">
+        <div class="call-avatar" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 7h12l1.5 13.5a1 1 0 0 1-1 1.1H5.5a1 1 0 0 1-1-1.1L6 7Z"/><path d="M9 10V6a3 3 0 0 1 6 0v4"/></svg>
+        </div>
+        <div class="wave" id="waveBox" data-state="idle" aria-hidden="true">
+          <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+        </div>
+        <div class="call-timer" id="sessionTimer">00:00</div>
+        <p class="call-hint">Like a phone call with the shop — speak, and the agent answers. Speak over it to interrupt.</p>
+      </div>
+
+      <div class="session-controls">
+        <button class="btn primary" id="startBtn" type="button">▶ Start voice session</button>
+        <button class="btn warn" id="interruptBtn" type="button" disabled>Interrupt</button>
+        <button class="btn ghost" id="endBtn" type="button" disabled>End session</button>
+        <button class="btn ghost" id="demoBtn" type="button">▶ Try a demo order</button>
+      </div>
+
+      <div class="transcript" id="transcript" aria-live="polite"></div>
+
+      <div class="chips" id="chips"></div>
+
+      <div class="composer">
+        <input id="textInput" type="text" autocomplete="off" placeholder="Type your order… e.g. Aashirvaad atta 5 kg" aria-label="Type your order">
+        <button class="btn primary" id="sendBtn" type="button">Send</button>
+      </div>
+      <p class="hint">Tip: speak or type in any of the seven languages. Try “Basmati rice 2 kg” — it is out of stock, and the agent will suggest Ponni rice instead. Say “yes” and it is added.</p>
+
+      <section class="card summary-card" id="summaryCard" hidden>
+        <h2>Session summary</h2>
+        <div id="summaryBody"></div>
+        <button class="btn primary block" id="newSessionBtn" type="button">Start a new session</button>
+      </section>
+    </section>
+
+    <aside class="side">
+      <section class="card bill-card">
+        <div class="card-head">
+          <h2>Your bill</h2>
+          <span class="pill" id="billCount">0 items</span>
+        </div>
+        <div id="billLines" class="bill-lines">
+          <p class="muted empty-note">Nothing yet — order something and it appears here.</p>
+        </div>
+        <div class="bill-total"><span>Total</span><strong id="billTotal">₹0.00</strong></div>
+        <button class="btn primary block" id="payBtn" type="button" disabled>Pay with UPI</button>
+      </section>
+
+      <section class="card qr-card" id="qrCard" hidden>
+        <h2>Scan to pay</h2>
+        <div class="qr-wrap"><img id="qrImg" alt="UPI QR code for the bill total"></div>
+        <p class="upi-link" id="upiLinkText"></p>
+        <p class="muted small">Pay with any UPI app — GPay, PhonePe, Paytm. Demo merchant VPA: <code id="qrVpa">kirana@okhdfcbank</code></p>
+      </section>
+
+      <section class="card signals-card">
+        <div class="card-head">
+          <h2>Restock signals</h2>
+          <span class="pill" id="signalCount">0</span>
+        </div>
+        <ul id="signalList" class="signal-list">
+          <li class="muted empty-note">Out-of-stock requests land here so the shop knows what to reorder.</li>
+        </ul>
+      </section>
+
+      <section class="card shelf-card">
+        <div class="card-head"><h2>On the shelf</h2><span class="pill" id="shelfCount"></span></div>
+        <div id="shelfGrid" class="shelf-grid"></div>
+      </section>
+    </aside>
+  </div>
+</main>
+
+<footer class="foot">
+  <p>Voice uses Sarvam AI when a key is configured in Settings, otherwise your browser's free Web Speech API. Typing always works. No account, no server — the session runs in this page.</p>
+</footer>
+
+<script src="vendor/qrcode.js"></script>
+<script type="module" src="counter.js"></script>
+</body>
+</html>

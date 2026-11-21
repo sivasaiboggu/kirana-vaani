@@ -1,0 +1,11 @@
+{
+  "description": "KiranaVaani \u2014 SaaS voice agent for kirana shops (Tamil, Telugu, Hindi, Kannada, English, Malayalam, Marathi). Landing page, owner dashboard with 3 demo shops, live voice counter with continuous turn-taking and barge-in, and Sarvam AI (Saaras / sarvam-105b / Bulbul) with free Web Speech fallback.",
+  "license": "MIT",
+  "name": "kirana-vaani",
+  "scripts": {
+    "start": "python3 -m http.server 8000",
+    "test": "node --test tests/*.test.js"
+  },
+  "type": "module",
+  "version": "3.0.0"
+}
