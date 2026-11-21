@@ -190,7 +190,7 @@ rice, groundnut oil, coffee — each has a substitute the agent offers
 ## Tests
 
 ```bash
-npm test        # 92 tests, all green
+npm test        # 97 tests, all green
 ```
 
 - `tests/agent.test.js`, `tests/intent.test.js`, `tests/billing.test.js` — the
@@ -259,13 +259,24 @@ src/sarvam.js   # Sarvam AI client + tools + conversation + register
 src/voice.js    # WebSpeechIO / SarvamIO / SilentIO
 src/shell.js    # shared top bar (nav + shop switcher + engine badge)
 sarvam.config.example.js  # copy to sarvam.config.js, paste your key
-tests/          # 92 tests (node --test)
+tests/          # 97 tests (node --test)
 screenshots/
+scripts/shots.mjs  # real headless-Chrome renders of every screen
 vendor/qrcode.js  # qrcode-generator 1.4.4 (MIT)
 ```
 
 ## Status
 
+- v3.1.0 — Craft pass: one deliberate identity ("the printed shop
+  bill" — flat paper, solid ink-green, serif signboard type, dashed
+  receipt rules, tabular numerals); every gradient, glow, glass panel,
+  shimmer and staggered entrance removed; copy rewritten in a plain
+  human voice with no clichés or decorative symbols (guarded by
+  tests/copy.test.js); the invented pricing tiers replaced with an
+  honest "What it costs"; the hero playback labelled as played back,
+  never live; the receipt restock line localised in all seven
+  languages; layout tests fixed for this VM's Chrome (file:// +
+  WebGL policy) and a screenshot script added.
 - v3.0.0 — KiranaVaani: renamed from Kirana Commerce; Malayalam + Marathi
   (7 languages); the agent sounds human (varied confirmations, unclear-
   speech recovery, repeat orders, receipt summary); UI polished into one

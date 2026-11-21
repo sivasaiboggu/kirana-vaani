@@ -116,6 +116,7 @@ body {
 
 .card-head {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
   justify-content: space-between;
   gap: 10px;
@@ -383,6 +384,7 @@ body {
   font-weight: 600;
   padding: 8px 13px;
   border-radius: 999px;
+  white-space: nowrap;
   transition: all 0.15s ease;
 }
 .shell-link:hover { color: var(--ink); background: #f5f0e3; }
@@ -571,7 +573,7 @@ body {
 
 .lang-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px; }
 .lang-card { text-decoration: none; color: var(--ink); display: flex; flex-direction: column; gap: 4px; }
-.try-link { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 700; color: var(--green); }
+.try-link { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 700; color: var(--green); white-space: nowrap; }
 .try-link svg { flex: none; }
 .lang-native { font-size: 22px; }
 .lang-card p { margin: 8px 0; font-size: 14px; color: #57534e; }

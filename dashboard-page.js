@@ -22,10 +22,10 @@ runLayoutCheck();
 // Engine badge: same automatic resolution as the live counter.
 const engine = resolveVoiceEngine({ apiKey: loadSarvamKey(), webSpeechSupported: webSpeechSupported() });
 $('engineBadge').textContent = engine === 'sarvam'
-  ? '● Sarvam AI voice'
+  ? 'Sarvam AI voice'
   : engine === 'webspeech'
-    ? '● Web Speech voice'
-    : '● Text only';
+    ? 'Web Speech voice'
+    : 'Text only';
 const items = shopCatalog(shop);
 const sessions = getSessions(shop.id);
 const summary = summarizeSessions(sessions, items);

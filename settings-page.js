@@ -70,10 +70,10 @@ function renderEngineStatus() {
   const badge = $('engineBadge');
   if (badge) {
     badge.textContent = engine === 'sarvam'
-      ? '● Sarvam AI voice'
+      ? 'Sarvam AI voice'
       : engine === 'webspeech'
-        ? '● Web Speech voice'
-        : '● Text only';
+        ? 'Web Speech voice'
+        : 'Text only';
   }
 }
 

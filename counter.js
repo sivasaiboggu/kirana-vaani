@@ -28,49 +28,49 @@ const UI = {
     placeholder: 'ஆர்டர் செய்யுங்கள்… எ.கா. ஆசீர்வாத் ஆட்டா 5 கிலோ',
     chips: ['ஆசீர்வாத் ஆட்டா 5 கிலோ', 'பாஸ்மதி அரிசி 2 கிலோ', 'பில்'],
     greetWord: 'வணக்கம்',
-    voiceReady: '🎙 குரல் தயார் — தமிழில் பேசுங்கள்',
+    voiceReady: 'குரல் தயார் — தமிழில் பேசுங்கள்',
   },
   te: {
     chatTitle: 'దుకాణంతో మాట్లాడండి',
     placeholder: 'మీ ఆర్డర్ టైప్ చేయండి… ఉదా. ఆశీర్వాద్ గోధుమ పిండి 5 కిలోలు',
     chips: ['ఆశీర్వాద్ గోధుమ పిండి 5 కిలోలు', 'బాస్మతి బియ్యం 2 కిలోలు', 'బిల్లు'],
     greetWord: 'నమస్కారం',
-    voiceReady: '🎙 వాయిస్ సిద్ధం — తెలుగులో మాట్లాడండి',
+    voiceReady: 'వాయిస్ సిద్ధం — తెలుగులో మాట్లాడండి',
   },
   hi: {
     chatTitle: 'दुकान से बात कीजिए',
     placeholder: 'अपना ऑर्डर लिखिए… जैसे आशीर्वाद आटा 5 किलो',
     chips: ['आशीर्वाद आटा 5 किलो', 'बासमती चावल 2 किलो', 'बिल'],
     greetWord: 'नमस्ते',
-    voiceReady: '🎙 आवाज़ तैयार है — हिन्दी में बोलिए',
+    voiceReady: 'आवाज़ तैयार है — हिन्दी में बोलिए',
   },
   kn: {
     chatTitle: 'ಅಂಗಡಿಯೊಂದಿಗೆ ಮಾತನಾಡಿ',
     placeholder: 'ನಿಮ್ಮ ಆರ್ಡರ್ ಟೈಪ್ ಮಾಡಿ… ಉದಾ. ಆಶೀರ್ವಾದ್ ಗೋಧಿ ಹಿಟ್ಟು 5 ಕಿಲೋ',
     chips: ['ಆಶೀರ್ವಾದ್ ಗೋಧಿ ಹಿಟ್ಟು 5 ಕಿಲೋ', 'ಬಾಸ್ಮತಿ ಅಕ್ಕಿ 2 ಕಿಲೋ', 'ಬಿಲ್'],
     greetWord: 'ನಮಸ್ಕಾರ',
-    voiceReady: '🎙 ಧ್ವನಿ ಸಿದ್ಧ — ಕನ್ನಡದಲ್ಲಿ ಮಾತನಾಡಿ',
+    voiceReady: 'ಧ್ವನಿ ಸಿದ್ಧ — ಕನ್ನಡದಲ್ಲಿ ಮಾತನಾಡಿ',
   },
   en: {
     chatTitle: 'Talk to the shop',
     placeholder: 'Type your order… e.g. Aashirvaad atta 5 kg',
     chips: ['Aashirvaad atta 5 kg', 'Basmati rice 2 kg', 'bill'],
     greetWord: 'hello',
-    voiceReady: '🎙 Voice ready — speak in English',
+    voiceReady: 'Voice ready — speak in English',
   },
   ml: {
     chatTitle: 'കടയോട് സംസാരിക്കൂ',
     placeholder: 'ഓർഡർ ടൈപ്പ് ചെയ്യൂ… ഉദാ. ആശിർവാദ് ആട്ട 5 കിലോ',
     chips: ['ആശിർവാദ് ആട്ട 5 കിലോ', 'ബസ്മതി അരി 2 കിലോ', 'ബിൽ'],
     greetWord: 'നമസ്കാരം',
-    voiceReady: '🎙 ശബ്ദം തയ്യാർ — മലയാളത്തിൽ സംസാരിക്കൂ',
+    voiceReady: 'ശബ്ദം തയ്യാർ — മലയാളത്തിൽ സംസാരിക്കൂ',
   },
   mr: {
     chatTitle: 'दुकानाशी बोला',
     placeholder: 'तुमची ऑर्डर टाइप करा… उदा. आशीर्वाद आटा 5 किलो',
     chips: ['आशीर्वाद आटा 5 किलो', 'बासमती तांदूळ 2 किलो', 'बिल'],
     greetWord: 'नमस्कार',
-    voiceReady: '🎙 आवाज तयार — मराठीत बोला',
+    voiceReady: 'आवाज तयार — मराठीत बोला',
   },
 };
 
@@ -119,7 +119,7 @@ function engineNote() {
     return 'Voice engine: Sarvam AI — Saaras STT · sarvam-105b · Bulbul TTS (key configured).';
   }
   if (activeEngine === 'webspeech') {
-    return 'Voice engine: Web Speech API (free fallback). Add a Sarvam key in Settings for the premium Sarvam voice — Saaras, sarvam-105b and Bulbul.';
+    return 'Voice engine: Web Speech API (free fallback). Add a Sarvam key in Settings for the Sarvam voice — Saaras, sarvam-105b and Bulbul.';
   }
   return 'Voice is not supported in this browser — type your order instead. (Chrome / Edge work best.)';
 }
@@ -283,7 +283,7 @@ function setStateUI(next) {
   $('startBtn').disabled = !!session && session.active;
   $('endBtn').disabled = !session || !session.active;
   $('interruptBtn').disabled = !session || session.state !== 'speaking';
-  if (next === 'listening') $('voiceStatus').textContent = '🎙 Listening… speak now.';
+  if (next === 'listening') $('voiceStatus').textContent = 'Listening — speak now.';
   if (next === 'thinking') $('voiceStatus').textContent = 'Thinking…';
   if (next === 'speaking') $('voiceStatus').textContent = 'Speaking… (speak over me to interrupt, or hit Interrupt)';
   if (next === 'ended') $('voiceStatus').textContent = engineNote();
@@ -447,7 +447,7 @@ function showSummary(summary) {
   if (receipt.signals.length > 0) {
     const sig = document.createElement('p');
     sig.className = 'muted small receipt-signals';
-    sig.textContent = `Restock note: ${receipt.signals.join(', ')} was asked for but out of stock.`;
+    sig.textContent = receipt.signalsNote;
     box.appendChild(sig);
   }
   const thanks = document.createElement('p');
@@ -518,10 +518,10 @@ $('shopSub').textContent = `${shop.city}, ${shop.state} · ${shop.tagline}`;
 $('qrVpa').textContent = settings.vpa;
 runLayoutCheck();
 $('engineBadge').textContent = activeEngine === 'sarvam'
-  ? '● Sarvam AI voice'
+  ? 'Sarvam AI voice'
   : activeEngine === 'webspeech'
-    ? '● Web Speech voice'
-    : '● Text only';
+    ? 'Web Speech voice'
+    : 'Text only';
 
 buildLangSwitch();
 renderLangUI();
