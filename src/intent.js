@@ -148,7 +148,10 @@ export const UNIT_LABELS = {
   dozen: { ta: 'டஜன்', te: 'డజను', hi: 'दर्जन', kn: 'ಡಜನ್', en: 'dozen', ml: 'ഡസൻ', mr: 'डझन' },
 };
 
-// Find every number occurrence in normalised text: { value, unit|null, index }
+// Find every number occurrence in normalised text:
+// { value, unit|null, index, end } — end is the end of the number plus its
+// unit word, so a quantity can be matched to the item it sits next to
+// ("basmati rice 2 kg" belongs to basmati, not to the next item).
 export function findNumbers(norm) {
   const found = [];
   const unitAlt = Object.values(UNIT_WORDS).flat().sort((a, b) => b.length - a.length)
@@ -160,17 +163,20 @@ export function findNumbers(norm) {
       const after = norm[m.index + m[0].length];
       if (after && /[\p{L}]/u.test(after)) continue;
     }
-    found.push({ value: parseFloat(m[1]), unit: m[2] ? UNIT_LOOKUP[m[2]] : null, index: m.index });
+    found.push({ value: parseFloat(m[1]), unit: m[2] ? UNIT_LOOKUP[m[2]] : null, index: m.index, end: m.index + m[0].length });
   }
-  // number words: token scan
+  // number words: token scan (indexed, so a repeated word like "two ... two"
+  // looks at the token after ITS OWN occurrence, not the first one)
   const tokens = norm.split(' ');
   let pos = 0;
-  for (const tok of tokens) {
+  for (let i = 0; i < tokens.length; i++) {
+    const tok = tokens[i];
     if (NUMBER_WORDS[tok] !== undefined && !found.some((f) => Math.abs(f.index - pos) < 2)) {
       let unit = null;
-      const next = tokens[tokens.indexOf(tok) + 1];
-      if (next && UNIT_LOOKUP[next]) unit = UNIT_LOOKUP[next];
-      found.push({ value: NUMBER_WORDS[tok], unit, index: pos });
+      let end = pos + tok.length;
+      const next = tokens[i + 1];
+      if (next && UNIT_LOOKUP[next]) { unit = UNIT_LOOKUP[next]; end = pos + tok.length + 1 + next.length; }
+      found.push({ value: NUMBER_WORDS[tok], unit, index: pos, end });
     }
     pos += tok.length + 1;
   }
@@ -259,13 +265,23 @@ function hasKeyword(norm, action) {
   return KEYWORDS[action].some((kw) => hay.includes(` ${normalizeText(kw)} `));
 }
 
-function nearestNumber(numbers, index) {
+// The quantity that belongs to an item is the one sitting next to it —
+// "2 kg rice" (before) or "rice 2 kg" (after). Plain nearest-by-centre got
+// this wrong in multi-item orders: in "basmati rice 2 kg and groundnut oil
+// 1 litre" the 2 sat nearer the middle of "groundnut oil" than the 1 did,
+// so groundnut oil was ordered as 2 litres. Gap between the number's span
+// (number + unit word) and the item's span decides instead.
+function nearestNumber(numbers, itemStart, itemEnd) {
   if (numbers.length === 0) return null;
   let best = null;
-  let bestDist = Infinity;
+  let bestGap = Infinity;
   for (const n of numbers) {
-    const d = Math.abs(n.index - index);
-    if (d < bestDist) { best = n; bestDist = d; }
+    const gap = n.index >= itemEnd
+      ? n.index - itemEnd
+      : n.end <= itemStart
+        ? itemStart - n.end
+        : 0;
+    if (gap < bestGap) { best = n; bestGap = gap; }
   }
   return best;
 }
@@ -301,8 +317,12 @@ export function parseIntent(raw, hintLang = 'en') {
 }
 
 function withQuantities(matches, numbers) {
-  return matches.map(({ item, index }) => {
-    const n = nearestNumber(numbers, index);
+  return matches.map(({ item, term, index }) => {
+    // findItems indexes into the space-padded text, so the term starts at
+    // the same offset in the unpadded text; the span ends after the term.
+    const itemStart = index;
+    const itemEnd = index + term.length;
+    const n = nearestNumber(numbers, itemStart, itemEnd);
     if (!n) return { item, qty: 1, unit: item.unit };
     const converted = toItemUnit(n.value, n.unit, item);
     return { item, qty: converted.qty, unit: converted.unit };

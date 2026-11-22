@@ -82,15 +82,18 @@ class Cdp {
   close() { try { this.ws.close(); } catch (err) { /* already closed */ } }
 }
 
-// Demo sessions (&fast=1) take ~10s to run through and end with the
-// receipt summary, so counter shots wait longer.
+// Demo sessions (&fast=1) take ~18s to run through and end with the
+// receipt summary, so counter shots wait longer. The demo driver now waits
+// for each reply to finish speaking before the next turn (no fake
+// interruptions), which makes the demo slower but honest.
 const SHOTS = [
   { name: 'landing.png', width: 1280, url: 'index.html', waitMs: 4000 },
   { name: 'landing-mobile.png', width: 390, url: 'index.html', waitMs: 4000 },
   { name: 'dashboard.png', width: 1280, url: 'dashboard.html', waitMs: 4000 },
-  { name: 'session-ta.png', width: 1280, url: 'counter.html?demo=ta&fast=1', waitMs: 13000 },
-  { name: 'session-te.png', width: 1280, url: 'counter.html?demo=te&fast=1', waitMs: 13000 },
-  { name: 'session-ta-mobile.png', width: 390, url: 'counter.html?demo=ta&fast=1', waitMs: 13000 },
+  { name: 'session-ta.png', width: 1280, url: 'counter.html?demo=ta&fast=1', waitMs: 20000 },
+  { name: 'session-te.png', width: 1280, url: 'counter.html?demo=te&fast=1', waitMs: 20000 },
+  { name: 'session-ta-mobile.png', width: 390, url: 'counter.html?demo=ta&fast=1', waitMs: 20000 },
+  { name: 'receipt-ta.png', width: 1280, url: 'counter.html?demo=ta&fast=1', waitMs: 20000, clip: '#summaryCard' },
   { name: 'settings.png', width: 1280, url: 'settings.html', waitMs: 3500 },
 ];
 
@@ -118,8 +121,16 @@ async function main() {
       await cdp.call('Page.navigate', { url: pageUrl(shot.url) });
       await cdp.waitForEvent('Page.loadEventFired');
       await delay(shot.waitMs);
+      let clip = undefined;
+      if (shot.clip) {
+        const rect = await cdp.call('Runtime.evaluate', {
+          expression: `(() => { const el = document.querySelector('${shot.clip}'); if (!el) return null; const r = el.getBoundingClientRect(); return { x: Math.max(0, r.left + window.scrollX - 12), y: Math.max(0, r.top + window.scrollY - 12), width: r.width + 24, height: r.height + 24, scale: 1 }; })()`,
+          returnByValue: true,
+        });
+        if (rect.result.value) clip = rect.result.value;
+      }
       const { data } = await cdp.call('Page.captureScreenshot', {
-        format: 'png', captureBeyondViewport: true,
+        format: 'png', captureBeyondViewport: true, ...(clip ? { clip } : {}),
       });
       fs.writeFileSync(path.join(ROOT, 'screenshots', shot.name), Buffer.from(data, 'base64'));
       console.log('wrote', shot.name);

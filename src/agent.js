@@ -16,7 +16,7 @@ import { parseIntent } from './intent.js';
 import { UNIT_LABELS } from './intent.js';
 import { findSubstituteIn, nameIn, ITEMS } from './catalog.js';
 import {
-  createCart, addToCart, removeFromCart, cartLines, cartTotal, isEmpty, formatINR,
+  createCart, addToCart, removeFromCart, cartLines, cartTotal, isEmpty, formatINR, round2,
 } from './billing.js';
 import { buildUpiLink, MERCHANT_VPA, MERCHANT_NAME } from './upi.js';
 
@@ -221,28 +221,90 @@ function qtyText(qty, unit, lang) {
 export class KiranaAgent {
   // items: this shop's shelf (per-shop stock/prices) — defaults to the
   // shared catalogue. vpa/merchantName: this shop's UPI identity for the QR.
+  // The shelf is cloned per agent: the agent's stock really depletes as
+  // items are added (and comes back on remove), so the shared catalogue is
+  // never mutated and two agents never share one shelf.
   constructor({ items = ITEMS, vpa = MERCHANT_VPA, merchantName = MERCHANT_NAME } = {}) {
-    this.items = items;
-    this.byId = new Map(items.map((i) => [i.id, i]));
+    this.items = items.map((i) => ({ ...i }));
+    this._initialStock = new Map(this.items.map((i) => [i.id, i.stock]));
+    this.byId = new Map(this.items.map((i) => [i.id, i]));
     this.vpa = vpa;
     this.merchantName = merchantName;
     this.cart = createCart();
     this.signals = []; // restock signals: { at, itemId, name, requestedQty, available, lang }
-    this.pendingSuggestion = null; // { item, qty } — awaiting a yes/no
+    this.pendingSuggestions = []; // queue of { item, qty, forItem } awaiting a yes/no
     this.lastAdded = null; // { item, qty, unit } — for "same again" / "2 more"
     this.unknownStreak = 0; // consecutive unclear turns
     this._addedCount = 0; // confirmation-variety rotation
     this._yesAddedCount = 0;
   }
 
+  // The offer on the table right now (first in the queue), or null.
+  get pendingSuggestion() {
+    return this.pendingSuggestions[0] || null;
+  }
+
   reset() {
     this.cart = createCart();
     this.signals = [];
-    this.pendingSuggestion = null;
+    this.pendingSuggestions = [];
     this.lastAdded = null;
     this.unknownStreak = 0;
     this._addedCount = 0;
     this._yesAddedCount = 0;
+    // A full reset puts the shelf back the way it was.
+    for (const item of this.items) item.stock = this._initialStock.get(item.id);
+  }
+
+  // A new customer at the counter: fresh bill and fresh memory — but the
+  // shop's restock signals stay, and the shelf stays depleted, because the
+  // shop really did sell those goods.
+  startNewSession() {
+    this.cart = createCart();
+    this.pendingSuggestions = [];
+    this.lastAdded = null;
+    this.unknownStreak = 0;
+    this._addedCount = 0;
+    this._yesAddedCount = 0;
+  }
+
+  // The shelf depletes as items are added, and comes back when they are
+  // removed — otherwise the same 50 kg of sugar could be sold forever.
+  _decrementStock(item, qty) {
+    item.stock = Math.max(0, round2(item.stock - qty));
+  }
+
+  _restoreStock(item, qty) {
+    const initial = this._initialStock.get(item.id);
+    item.stock = Math.min(initial === undefined ? item.stock + qty : initial, round2(item.stock + qty));
+  }
+
+  _offerSuggestion(sub, qty, forItem) {
+    this.pendingSuggestions.push({ item: sub, qty, forItem });
+  }
+
+  _takeSuggestion() {
+    return this.pendingSuggestions.shift() || null;
+  }
+
+  // The "shall I?" line for one pending offer, in the customer's language.
+  _offerText(t, lang, forItem, sub, qty) {
+    return t.outOfStock(
+      nameIn(forItem, lang), nameIn(sub, lang), formatINR(sub.price),
+      (UNIT_LABELS[sub.unit] && UNIT_LABELS[sub.unit][lang]) || sub.unit,
+    );
+  }
+
+  // Declining an offer: if another offer is waiting behind it, present that
+  // one instead of just saying "no problem" — the customer was already
+  // offered it in the same reply.
+  _declineReply(t, lang) {
+    this._takeSuggestion();
+    if (this.pendingSuggestions.length > 0) {
+      const next = this.pendingSuggestions[0];
+      return this._offerText(t, lang, next.forItem, next.item, next.qty);
+    }
+    return t.noOk;
   }
 
   get total() {
@@ -318,19 +380,27 @@ export class KiranaAgent {
     }
 
     if (intent.action === 'yes') {
-      if (this.pendingSuggestion) {
-        const { item, qty } = this.pendingSuggestion;
-        this.pendingSuggestion = null;
+      if (this.pendingSuggestions.length > 0) {
+        const { item, qty, forItem } = this._takeSuggestion();
         addToCart(this.cart, item, qty);
+        this._decrementStock(item, qty);
         this.lastAdded = { item, qty, unit: item.unit };
-        const reply = this._pickYesAdded(t)(nameIn(item, lang), qtyText(qty, item.unit, lang), formatINR(this.total));
-        return { ...base, reply, lines: this.lines, total: this.total };
+        let reply = this._pickYesAdded(t)(nameIn(item, lang), qtyText(qty, item.unit, lang), formatINR(this.total));
+        // Another offer was waiting behind this one — present it now, so a
+        // second "yes" does something the customer was already told about.
+        if (this.pendingSuggestions.length > 0) {
+          const next = this.pendingSuggestions[0];
+          reply += ` ${this._offerText(t, lang, next.forItem, next.item, next.qty)}`;
+        }
+        return { ...base, reply, lines: this.lines, total: this.total, suggestion: this.pendingSuggestion };
       }
       return { ...base, reply: t.yesNothing };
     }
 
     if (intent.action === 'no') {
-      this.pendingSuggestion = null;
+      if (this.pendingSuggestions.length > 0) {
+        return { ...base, reply: this._declineReply(t, lang), suggestion: this.pendingSuggestion };
+      }
       return { ...base, reply: t.noOk };
     }
 
@@ -338,15 +408,15 @@ export class KiranaAgent {
       // "Vendu / nako" with no item named usually means "no" to the offer
       // on the table — decline the pending suggestion instead of asking
       // "remove what?".
-      if (intent.items.length === 0 && this.pendingSuggestion) {
-        this.pendingSuggestion = null;
-        return { ...base, reply: t.noOk };
+      if (intent.items.length === 0 && this.pendingSuggestions.length > 0) {
+        return { ...base, reply: this._declineReply(t, lang), suggestion: this.pendingSuggestion };
       }
       if (intent.items.length === 0) return { ...base, reply: t.removeWhat };
       const parts = [];
       for (const { item, qty } of intent.items) {
         const { removed } = removeFromCart(this.cart, item, qty);
         if (removed > 0) {
+          this._restoreStock(item, removed);
           parts.push(t.removed(nameIn(item, lang), qtyText(removed, item.unit, lang), formatINR(this.total)));
         } else {
           parts.push(t.notInBill(nameIn(item, lang)));
@@ -363,15 +433,20 @@ export class KiranaAgent {
         this.logSignal(item, qty, lang);
         const sub = findSubstituteIn(item, this.items);
         if (sub) {
-          this.pendingSuggestion = { item: sub, qty };
-          return { ...base, reply: t.outOfStock(nameIn(item, lang), nameIn(sub, lang), formatINR(sub.price), (UNIT_LABELS[sub.unit] && UNIT_LABELS[sub.unit][lang]) || sub.unit), suggestion: this.pendingSuggestion };
+          this._offerSuggestion(sub, qty, item);
+          return { ...base, reply: this._offerText(t, lang, item, sub, qty), suggestion: this.pendingSuggestion };
         }
         return { ...base, reply: t.outOfStockNone(nameIn(item, lang)) };
       }
       const addQty = Math.min(qty, item.stock);
       addToCart(this.cart, item, addQty);
+      this._decrementStock(item, addQty);
       this.lastAdded = { item, qty: addQty, unit };
-      const reply = this._pickAdded(t)(nameIn(item, lang), qtyText(addQty, item.unit, lang), formatINR(item.price * addQty), formatINR(this.total));
+      // Short fill on a repeat is still a short fill — say so, like the
+      // normal add path does, instead of quietly adding less.
+      const reply = addQty < qty
+        ? t.partial(nameIn(item, lang), qtyText(addQty, item.unit, lang), qtyText(qty, item.unit, lang))
+        : this._pickAdded(t)(nameIn(item, lang), qtyText(addQty, item.unit, lang), formatINR(item.price * addQty), formatINR(this.total));
       return { ...base, reply, lines: this.lines, total: this.total };
     }
 
@@ -383,24 +458,27 @@ export class KiranaAgent {
           this.logSignal(item, qty, lang);
           const sub = findSubstituteIn(item, this.items);
           if (sub) {
-            this.pendingSuggestion = { item: sub, qty };
-            parts.push(t.outOfStock(name, nameIn(sub, lang), formatINR(sub.price), (UNIT_LABELS[sub.unit] && UNIT_LABELS[sub.unit][lang]) || sub.unit));
+            this._offerSuggestion(sub, qty, item);
+            parts.push(this._offerText(t, lang, item, sub, qty));
           } else {
             parts.push(t.outOfStockNone(name));
           }
         } else if (qty > item.stock) {
           this.logSignal(item, qty, lang);
-          addToCart(this.cart, item, item.stock);
-          this.lastAdded = { item, qty: item.stock, unit: item.unit };
-          parts.push(t.partial(name, qtyText(item.stock, item.unit, lang), qtyText(qty, item.unit, lang)));
+          const available = item.stock; // capture before the shelf depletes
+          addToCart(this.cart, item, available);
+          this._decrementStock(item, available);
+          this.lastAdded = { item, qty: available, unit: item.unit };
+          parts.push(t.partial(name, qtyText(available, item.unit, lang), qtyText(qty, item.unit, lang)));
         } else {
           addToCart(this.cart, item, qty);
+          this._decrementStock(item, qty);
           this.lastAdded = { item, qty, unit: item.unit };
           const line = formatINR(item.price * qty);
           parts.push(this._pickAdded(t)(name, qtyText(qty, item.unit, lang), line, formatINR(this.total)));
         }
       }
-      return { ...base, reply: parts.join(' '), lines: this.lines, total: this.total };
+      return { ...base, reply: parts.join(' '), lines: this.lines, total: this.total, suggestion: this.pendingSuggestion };
     }
 
     // Unclear turn: ask once, then offer the typed box instead of repeating

@@ -20,6 +20,60 @@ Open `index.html` (or run the server below) and it works.
 | `counter.html` | **Live voice counter** — the call-like voice session (start from the dashboard or open directly) |
 | `settings.html` | Shop name, UPI VPA, default language, voice speed, Sarvam API key |
 
+## Project brief (master prompt, Section 1)
+
+- **Name:** KiranaVaani
+- **Type:** web app — a voice agent for kirana (corner) shops. Plain
+  HTML/CSS/JS, no build step, no server.
+- **What it does (1 sentence):** a customer speaks an order in one of
+  seven Indian languages; the agent checks stock, suggests a substitute,
+  keeps the running bill, and shows a UPI QR to pay.
+- **Target user and biggest pain:** a small kirana shop owner in India.
+  Customers speak a different language than the owner, and the counter
+  slows down while the owner checks stock and totals by hand.
+- **Core promise:** a customer speaks, the shop understands, the bill is
+  right.
+- **Tone:** warm, plain, shopkeeper-human.
+- **Colours:** warm paper, ink green, one marigold accent.
+- **Reference sites:** Mobbin (real counter and voice flows), Land-book
+  (editorial landing), Refero (design-system discipline).
+- **Platforms:** web — desktop and phone, via GitHub Pages.
+- **Must-haves:** 7-language voice agent, stock check + substitutes,
+  running bill, UPI QR, restock signals, owner dashboard, settings that
+  persist, Sarvam AI optional on the owner's own key.
+
+## Design system — the printed shop bill
+
+One signature visual idea, repeated with discipline: **the printed shop
+bill**. Flat warm paper, solid ink-green, one marigold accent used only
+where attention is needed, serif display type like a painted shop
+signboard (Georgia stack, Noto Serif fallbacks for Indic scripts),
+dashed receipt rules, tabular numerals for money. Features are ledger
+rows under dashed rules, not cards; steps are a quiet numbered list
+under a green rule. Motion only where it means something: the voice wave
+bars, a short fade on a new transcript line, the dashboard count-up.
+
+- **Tokens:** `tokens.json` (palette, type, spacing, radii, shadows,
+  motion rules, contrast table) and the `:root` block in `styles.css`.
+  Every colour is declared twice — hex first, then OKLCH — so browsers
+  that understand OKLCH use it and older ones keep the hex.
+- **Accent:** marigold `#d97706` — the flower on every Indian shop
+  counter, the one warm note against ink-green and paper. It marks the
+  mic, the speaking ring, the wave bars while speaking, low-stock and
+  restock marks, and the eyebrow labels: under 10% of any screen. The
+  mic uses the deeper `#b45309`, because white on `#d97706` is only
+  3.19:1 while white on `#b45309` is 5.02:1.
+- **Type:** display serif + system sans (keeps all seven scripts
+  legible) + mono, used only for machine strings (UPI link, timers,
+  code). Money always uses tabular numerals.
+- **Contrast:** every text pair in `tokens.json` passes WCAG AA
+  (4.5:1). Muted text is `#6e675f` (4.95:1 on paper) — the old
+  `#78716c` was 4.26:1, under AA for small text.
+- **Guarded by tests:** `tests/copy.test.js` bans the clichés, the
+  decorative symbols and the gradient/glass/shimmer tells, and checks
+  the tokens file (OKLCH present, no `transition: all`, contrast table
+  all passing).
+
 ## Quick start
 
 ```bash
@@ -190,7 +244,7 @@ rice, groundnut oil, coffee — each has a substitute the agent offers
 ## Tests
 
 ```bash
-npm test        # 97 tests, all green
+npm test        # 110 tests, all green
 ```
 
 - `tests/agent.test.js`, `tests/intent.test.js`, `tests/billing.test.js` — the
@@ -208,7 +262,10 @@ npm test        # 97 tests, all green
 - `tests/languages.test.js` — Malayalam + Marathi end to end (catalogue,
   detection incl. Marathi-vs-Hindi, demo flows, register), confirmation
   variety, unclear-speech recovery, repeat orders
-- `tests/receipt.test.js` — the session receipt in all seven languages
+- `tests/receipt.test.js` — the session receipt in all seven languages,
+  including item names in the receipt language
+- `tests/upi.test.js` — the UPI link round-trips (merchant, amount,
+  currency, note) exactly as the QR encodes it
 - `tests/layout.test.js` — every page in headless Chrome over CDP: zero
   horizontal overflow at a true 390px phone width and at 1280px desktop
 
@@ -245,6 +302,7 @@ dashboard.html  dashboard-page.js
 counter.html  counter.js         # live voice counter
 settings.html  settings-page.js
 styles.css                       # whole design system
+tokens.json                      # design tokens: OKLCH palette, type, contrast table
 src/agent.js    # shop brain: orders, stock, substitutes, bill, QR
 src/catalog.js  # 34-item catalogue + substitutes
 src/intent.js   # language detection + multilingual intent parsing
@@ -259,7 +317,7 @@ src/sarvam.js   # Sarvam AI client + tools + conversation + register
 src/voice.js    # WebSpeechIO / SarvamIO / SilentIO
 src/shell.js    # shared top bar (nav + shop switcher + engine badge)
 sarvam.config.example.js  # copy to sarvam.config.js, paste your key
-tests/          # 97 tests (node --test)
+tests/          # 110 tests (node --test)
 screenshots/
 scripts/shots.mjs  # real headless-Chrome renders of every screen
 vendor/qrcode.js  # qrcode-generator 1.4.4 (MIT)
@@ -267,6 +325,22 @@ vendor/qrcode.js  # qrcode-generator 1.4.4 (MIT)
 
 ## Status
 
+- v3.2.0 — Master-prompt polish (round 10). Logic, all found by testing
+  rather than assumed: quantities in multi-item orders now attach to the
+  item they sit next to ("basmati rice 2 kg and groundnut oil 1 litre"
+  used to order groundnut oil as 2 litres); two out-of-stock offers in
+  one turn are now a queue, so "yes" adds them in order instead of
+  silently dropping the first; the shelf really depletes as items are
+  added and comes back on remove (the same 50 kg of sugar could be sold
+  forever); a repeat that short-fills says so; starting a new session
+  starts a fresh bill (the old bill used to carry over); receipt item
+  names are in the receipt language (they were always English); the
+  scripted demo waits for each reply to finish, so demo receipts no
+  longer record five interruptions that never happened. Design: colours
+  are OKLCH with hex fallbacks (`tokens.json` + contrast table, all AA —
+  muted text darkened, mic on the deeper marigold); mono type for machine
+  strings; steps and features are ledger rows under rules, not identical
+  cards; the landing nav fits one row at 1280px. 110 tests (was 97).
 - v3.1.0 — Craft pass: one deliberate identity ("the printed shop
   bill" — flat paper, solid ink-green, serif signboard type, dashed
   receipt rules, tabular numerals); every gradient, glow, glass panel,

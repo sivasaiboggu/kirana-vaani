@@ -3,6 +3,7 @@
 // thank-you line in the session language. Pure data in, structured receipt
 // out; the counter renders it as a paper receipt.
 import { UNIT_LABELS } from './intent.js';
+import { getItem, nameIn } from './catalog.js';
 import { formatINR } from './billing.js';
 
 // One sentence per language for the restock line on the receipt — it
@@ -32,13 +33,20 @@ function qtyText(qty, unit, lang) {
 // renders — nothing here touches the DOM.
 export function buildReceipt(summary, { shopName = 'KiranaVaani', lang = 'en' } = {}) {
   const labels = RECEIPT_LABELS[lang] || RECEIPT_LABELS.en;
-  const lines = (summary.items || []).map((it) => ({
-    itemId: it.itemId,
-    name: it.name,
-    qtyText: qtyText(it.qty, it.unit, lang),
-    unitPrice: formatINR(it.price),
-    total: formatINR(it.total),
-  }));
+  const lines = (summary.items || []).map((it) => {
+    // The bill on a Tamil receipt names the item in Tamil, not English.
+    // Session summaries store the English name, so resolve the item by id
+    // and take the name in the receipt language; unknown ids keep the
+    // stored name rather than going blank.
+    const catalogItem = it.itemId ? getItem(it.itemId) : null;
+    return {
+      itemId: it.itemId,
+      name: catalogItem ? nameIn(catalogItem, lang) : it.name,
+      qtyText: qtyText(it.qty, it.unit, lang),
+      unitPrice: formatINR(it.price),
+      total: formatINR(it.total),
+    };
+  });
   const when = summary.endedAt || summary.startedAt || new Date().toISOString();
   return {
     title: labels.receipt,

@@ -216,10 +216,13 @@ function renderSignals() {
 }
 
 function renderShelf() {
+  // Stock comes from the agent's shelf (it depletes as items are added),
+  // not the static catalogue — the agent clones the shelf per session, so
+  // the catalogue itself is never mutated.
   const grid = $('shelfGrid');
   grid.innerHTML = '';
-  $('shelfCount').textContent = `${items.length} items`;
-  for (const item of items) {
+  $('shelfCount').textContent = `${agent.items.length} items`;
+  for (const item of agent.items) {
     const div = document.createElement('div');
     div.className = 'shelf-item';
     const nm = document.createElement('span');
@@ -351,6 +354,7 @@ function onSessionEvent(ev) {
     addBubble('agent', ev.turn.text, ev.turn.lang, ev.result && ev.result.fallback ? 'answered locally — Sarvam was unavailable' : null);
     renderBill();
     renderSignals();
+    renderShelf();
     if (ev.result && ev.result.showQR && ev.result.upiLink) showQR(ev.result.upiLink);
     else if (agent.total <= 0) $('qrCard').hidden = true;
   }
@@ -376,6 +380,15 @@ function newSession(kind) {
 
 async function startVoiceSession(kind = 'voice') {
   if (session && session.active) return session;
+  // A new session is a new customer: the previous bill must not carry over
+  // (the old code never reset the agent, so session 2's bill and receipt
+  // still contained session 1's items). Restock signals and the depleted
+  // shelf stay — the shop really did sell those goods.
+  agent.startNewSession();
+  renderBill();
+  renderSignals();
+  renderShelf();
+  $('qrCard').hidden = true;
   $('summaryCard').hidden = true;
   const s = newSession(kind);
   await s.start();
@@ -488,7 +501,9 @@ async function runDemo(lang, fast = false) {
   await runDemoTurns(s, DEMOS[lang], { delay: fast ? 150 : 1100 });
   // Let the final reply (the bill) finish speaking, then end the session
   // so the summary appears and the session lands in the dashboard history.
-  await new Promise((r) => setTimeout(r, fast ? 2600 : 3200));
+  // The bill reply is the longest one the demo speaks (~2.6 s in demo IO),
+  // so the wait has to clear that, not just the inter-turn pause.
+  await new Promise((r) => setTimeout(r, fast ? 3400 : 3600));
   await endSession();
   state.demoRunning = false;
   $('demoBtn').disabled = false;

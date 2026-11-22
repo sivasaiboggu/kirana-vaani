@@ -69,6 +69,23 @@ test('no gradient, glass or shimmer tells left in the stylesheet', () => {
   }
 });
 
+test('design tokens: OKLCH colours with hex fallbacks, contrast table passes AA', () => {
+  const css = fs.readFileSync(path.join(ROOT, 'styles.css'), 'utf8');
+  assert.ok(css.includes('oklch('), 'styles.css should declare colours in OKLCH');
+  assert.ok(!css.includes('transition: all'), 'styles.css still animates "all" — scope transitions to the property that changes');
+  const tokens = JSON.parse(fs.readFileSync(path.join(ROOT, 'tokens.json'), 'utf8'));
+  for (const [name, value] of Object.entries(tokens.color)) {
+    assert.ok(value.hex && value.oklch, `tokens.json colour ${name} needs both hex and oklch`);
+    assert.ok(/^oklch\(/.test(value.oklch), `tokens.json colour ${name} is not OKLCH`);
+  }
+  assert.ok(tokens.accent && tokens.accent.hex, 'tokens.json should name the one accent and why');
+  assert.ok(tokens.contrast.length >= 10, 'tokens.json should carry a real contrast table');
+  for (const row of tokens.contrast) {
+    assert.ok(row.ratio >= 4.5, `contrast too low for AA text: ${row.pair} is ${row.ratio}:1`);
+    assert.equal(row.aa, 'pass', `${row.pair} is not marked as passing AA`);
+  }
+});
+
 test('landing states the real cost, not invented tiers', () => {
   const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
   assert.ok(html.includes('What it costs'), 'landing should have the honest cost section');

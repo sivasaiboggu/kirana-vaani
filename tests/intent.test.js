@@ -112,6 +112,26 @@ test('longest match wins: basmati rice does not also match plain rice', () => {
   assert.deepEqual(itemIds(r), ['rice-basmati']);
 });
 
+test('quantities attach to the item they sit next to, not the nearest centre', () => {
+  // Regression: "basmati rice 2 kg and groundnut oil 1 litre" used to order
+  // groundnut oil as 2 litres, because the 2 sat nearer the middle of
+  // "groundnut oil" than the 1 did.
+  const r = parseIntent('basmati rice 2 kg and groundnut oil 1 litre');
+  assert.deepEqual(itemIds(r), ['rice-basmati', 'oil-groundnut']);
+  assert.equal(r.items[0].qty, 2);
+  assert.equal(r.items[1].qty, 1);
+  assert.equal(r.items[1].unit, 'litre');
+});
+
+test('repeated number words look at their own following unit', () => {
+  const r = parseIntent('two kg rice and two dozen eggs');
+  assert.deepEqual(itemIds(r), ['rice-ponni', 'eggs']);
+  assert.equal(r.items[0].qty, 2);
+  assert.equal(r.items[0].unit, 'kg');
+  assert.equal(r.items[1].qty, 24);
+  assert.equal(r.items[1].unit, 'piece');
+});
+
 test('multiple items get their own nearest quantity', () => {
   const r = parseIntent('2 kg rice and 1 kg sugar');
   assert.deepEqual(itemIds(r), ['rice-ponni', 'sugar']);
@@ -171,6 +191,8 @@ test('findNumbers finds digits with units', () => {
   assert.equal(nums.length, 2);
   assert.equal(nums[0].value, 2);
   assert.equal(nums[0].unit, 'kg');
+  assert.equal(nums[0].end, 4); // end of "2 kg"
   assert.equal(nums[1].value, 500);
   assert.equal(nums[1].unit, 'g');
+  assert.equal(nums[1].end, 19); // end of "500 g" at index 14
 });

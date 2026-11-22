@@ -17,7 +17,7 @@ const shopSelect = document.getElementById('shopSelect');
 for (const s of listShops()) {
   const opt = document.createElement('option');
   opt.value = s.id;
-  opt.textContent = `${s.name} — ${s.city}`;
+  opt.textContent = s.name; // city is already in the hero; the name alone fits the select
   if (s.id === currentShop.id) opt.selected = true;
   shopSelect.appendChild(opt);
 }

@@ -203,6 +203,9 @@ test('demo driver: scripted Tamil order runs end-to-end through the session', as
   assert.equal(agent.total, 489); // 275 atta + 124 ponni + 90 sugar (2kg @ 45, base catalogue)
   assert.equal(agent.lines.length, 3);
   assert.equal(agent.signals.length, 1); // basmati
+  // The demo waits for each reply to finish before the next turn, so it
+  // records no interruptions — a scripted demo is not a barge-in.
+  assert.equal(session.bargeIns, 0);
   assert.ok(events.some((e) => e.type === 'agent-turn' && /489/.test(e.turn.text)));
   const summary = await session.end();
   assert.equal(summary.total, 489);

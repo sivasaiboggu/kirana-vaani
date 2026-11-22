@@ -82,6 +82,32 @@ test('receipt: a live session summary becomes a receipt', async () => {
   assert.equal(r.title, 'ரசீது');
 });
 
+test('receipt: item names are in the receipt language, not always English', () => {
+  // A Tamil receipt used to list "Aashirvaad Atta" in English next to Tamil
+  // quantities — the bill on a Tamil receipt names the item in Tamil.
+  const expected = {
+    ta: 'ஆசீர்வாத் ஆட்டா',
+    te: 'ఆశీర్వాద్ గోధుమ పిండి',
+    hi: 'आशीर्वाद आटा',
+    kn: 'ಆಶೀರ್ವಾದ್ ಗೋಧಿ ಹಿಟ್ಟು',
+    en: 'Aashirvaad Atta',
+    ml: 'ആശിർവാദ് ആട്ട',
+    mr: 'आशीर्वाद आटा',
+  };
+  for (const [lang, name] of Object.entries(expected)) {
+    const r = buildReceipt(fakeSummary(), { shopName: 'Test', lang });
+    assert.equal(r.lines[0].name, name, `${lang} receipt line should name the item in ${lang}`);
+  }
+  assert.equal(buildReceipt(fakeSummary(), { lang: 'ta' }).lines[1].name, 'பொன்னி அரிசி');
+  assert.equal(buildReceipt(fakeSummary(), { lang: 'te' }).lines[2].name, 'చక్కెర');
+  // Unknown item ids keep the stored name instead of going blank.
+  const unknown = buildReceipt({
+    ...fakeSummary(),
+    items: [{ itemId: 'not-a-real-item', name: 'Mystery Item', qty: 1, unit: 'kg', price: 10, total: 10 }],
+  }, { shopName: 'Test', lang: 'ta' });
+  assert.equal(unknown.lines[0].name, 'Mystery Item');
+});
+
 test('formatDuration: mm:ss, zero-padded', () => {
   assert.equal(formatDuration(0), '00:00');
   assert.equal(formatDuration(5000), '00:05');

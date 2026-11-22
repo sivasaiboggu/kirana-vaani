@@ -51,7 +51,7 @@ export function initShell({ active = '' } = {}) {
   for (const s of listShops()) {
     const opt = document.createElement('option');
     opt.value = s.id;
-    opt.textContent = `${s.name} — ${s.city}`;
+    opt.textContent = s.name; // city is already in the page subtitle; the name alone fits the select
     if (s.id === shop.id) opt.selected = true;
     select.appendChild(opt);
   }

@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { KiranaAgent } from '../src/agent.js';
+import { ITEMS } from '../src/catalog.js';
 
 test('Tamil end-to-end: order atta, bill total is correct', () => {
   const agent = new KiranaAgent();
@@ -141,4 +142,82 @@ test('reset clears cart, signals and pending suggestion', () => {
   assert.equal(agent.total, 0);
   assert.equal(agent.signals.length, 0);
   assert.equal(agent.pendingSuggestion, null);
+});
+
+test('two out-of-stock offers in one turn: yes walks the queue in order', () => {
+  const agent = new KiranaAgent();
+  const r = agent.process('basmati rice 2 kg and groundnut oil 1 litre');
+  // Both offers are spoken; the first one is on the table.
+  assert.ok(/ponni/i.test(r.reply), r.reply);
+  assert.ok(/sunflower/i.test(r.reply), r.reply);
+  assert.equal(agent.pendingSuggestion.item.id, 'rice-ponni');
+  assert.equal(agent.total, 0);
+
+  const r1 = agent.process('yes');
+  assert.equal(agent.total, 124); // 2 kg ponni first — not sunflower
+  assert.ok(/ponni/i.test(r1.reply), r1.reply);
+  // The second offer is presented right away, so the next yes is meaningful.
+  assert.ok(/sunflower/i.test(r1.reply), r1.reply);
+  assert.equal(agent.pendingSuggestion.item.id, 'oil-sunflower');
+
+  const r2 = agent.process('yes');
+  assert.equal(agent.total, 259); // 124 ponni + 135 sunflower
+  assert.ok(/sunflower/i.test(r2.reply), r2.reply);
+  assert.equal(agent.pendingSuggestion, null);
+});
+
+test('two out-of-stock offers in one turn: no declines one at a time', () => {
+  const agent = new KiranaAgent();
+  agent.process('basmati rice 2 kg and groundnut oil 1 litre');
+  const r1 = agent.process('no');
+  assert.ok(/sunflower/i.test(r1.reply), r1.reply); // next offer, not a plain "no problem"
+  assert.equal(agent.pendingSuggestion.item.id, 'oil-sunflower');
+  const r2 = agent.process('no');
+  assert.ok(/no problem/i.test(r2.reply), r2.reply);
+  assert.equal(agent.pendingSuggestion, null);
+  assert.equal(agent.total, 0);
+});
+
+test('the shelf depletes as items are added, and remove puts stock back', () => {
+  const agent = new KiranaAgent();
+  agent.process('50 kg sugar'); // the whole shelf
+  assert.equal(agent.byId.get('sugar').stock, 0);
+  const r = agent.process('50 kg sugar');
+  assert.ok(/out of stock/i.test(r.reply), r.reply); // nothing left to sell
+  assert.equal(agent.total, 2250); // only the first 50 kg
+  agent.process('remove 50 kg sugar');
+  assert.equal(agent.byId.get('sugar').stock, 50);
+  assert.equal(agent.total, 0);
+});
+
+test('repeat with more than the shelf holds says so, like a normal add', () => {
+  const agent = new KiranaAgent();
+  agent.process('40 kg sugar'); // 10 kg left on the shelf
+  const r = agent.process('100 more');
+  assert.ok(/only 10 kg/i.test(r.reply), r.reply);
+  assert.equal(agent.total, 2250); // 40 + 10 kg, not 140
+});
+
+test('startNewSession: fresh bill, but signals and the depleted shelf stay', () => {
+  const agent = new KiranaAgent();
+  agent.process('2 kg sugar');
+  agent.process('basmati rice 1 kg'); // restock signal
+  agent.startNewSession();
+  assert.equal(agent.total, 0);
+  assert.equal(agent.lines.length, 0);
+  assert.equal(agent.pendingSuggestion, null);
+  assert.equal(agent.lastAdded, null);
+  assert.equal(agent.signals.length, 1); // the shop still needs to restock basmati
+  assert.equal(agent.byId.get('sugar').stock, 48); // the 2 kg really sold
+});
+
+test('reset restores the shelf; agents never mutate the shared catalogue', () => {
+  const agent = new KiranaAgent();
+  agent.process('50 kg sugar');
+  assert.equal(agent.byId.get('sugar').stock, 0);
+  agent.reset();
+  assert.equal(agent.byId.get('sugar').stock, 50);
+  const other = new KiranaAgent();
+  assert.equal(other.byId.get('sugar').stock, 50); // a second agent starts full
+  assert.equal(ITEMS.find((i) => i.id === 'sugar').stock, 50); // the shared catalogue is untouched
 });

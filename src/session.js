@@ -219,11 +219,28 @@ export class VoiceSession {
 
 // Demo driver — feeds scripted turns through the same state machine, so the
 // demo exercises the exact turn-taking / barge-in / summary path as live voice.
+// A turn is only sent once the agent is listening again: a real customer
+// waits for the agent to finish speaking, and sending a turn mid-reply is
+// a barge-in — the old driver sent every 150 ms in fast mode, so every
+// demo receipt recorded 5 interruptions that never happened.
 export async function runDemoTurns(session, steps, { delay = 1100 } = {}) {
   for (const step of steps) {
+    await waitForListening(session);
+    if (session.state === 'ended') break;
     await new Promise((r) => setTimeout(r, delay));
     if (session.state === 'ended') break;
     session.receive(step);
+  }
+}
+
+// Poll until the session is back to listening (or ended), so the next turn
+// does not interrupt the reply in progress. Gives up after a timeout so a
+// stuck speak can never hang the demo forever.
+async function waitForListening(session, timeoutMs = 15000) {
+  const start = Date.now();
+  while (session.state !== 'listening' && session.state !== 'ended') {
+    if (Date.now() - start > timeoutMs) return;
+    await new Promise((r) => setTimeout(r, 100));
   }
 }
 

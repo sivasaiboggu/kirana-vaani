@@ -6,19 +6,31 @@
    gradients, no glow, no glass — the only motion is the wave (it shows
    the voice state) and a short fade when a new transcript line lands. */
 
+/* Design tokens — "the printed shop bill" (see tokens.json for the full
+   system and the contrast table). Every colour is declared twice: hex
+   first, then OKLCH. Browsers that understand OKLCH use the second line;
+   older ones keep the hex. The two lines are the same colour, so nothing
+   ever renders differently between them.
+   Palette: warm paper, ink green, ONE marigold accent (#d97706) used only
+   where attention is needed — mic, speaking ring, wave bars, low-stock and
+   restock marks, eyebrow labels — under 10% of any screen. The mic uses
+   the deeper marigold because white on #d97706 is only 3.19:1, while white
+   on #b45309 is 5.02:1. Muted text is #6e675f (4.95:1 on paper) — the old
+   #78716c was 4.26:1, under WCAG AA for small text. */
 :root {
-  --bg: #f6f1e7;
-  --surface: #fffdf8;
-  --ink: #1c1917;
-  --muted: #78716c;
-  --line: #e7e0d0;
-  --green: #166534;
-  --green-deep: #14532d;
-  --green-soft: #dcfce7;
-  --amber: #d97706;
-  --amber-soft: #fef3c7;
-  --red: #b91c1c;
-  --red-soft: #fee2e2;
+  --bg: #f6f1e7; --bg: oklch(0.959 0.014 84.6);
+  --surface: #fffdf8; --surface: oklch(0.994 0.007 88.6);
+  --ink: #1c1917; --ink: oklch(0.216 0.006 56.0);
+  --muted: #6e675f; --muted: oklch(0.518 0.015 71.2);
+  --line: #e7e0d0; --line: oklch(0.908 0.023 87.2);
+  --green: #166534; --green: oklch(0.448 0.108 151.3);
+  --green-deep: #14532d; --green-deep: oklch(0.393 0.090 152.5);
+  --green-soft: #dcfce7; --green-soft: oklch(0.962 0.043 156.7);
+  --amber: #d97706; --amber: oklch(0.666 0.157 58.3);
+  --amber-deep: #b45309; --amber-deep: oklch(0.555 0.146 49.0);
+  --amber-soft: #fef3c7; --amber-soft: oklch(0.962 0.058 95.6);
+  --red: #b91c1c; --red: oklch(0.505 0.190 27.5);
+  --red-soft: #fee2e2; --red-soft: oklch(0.936 0.031 17.7);
   --serif: Georgia, "Iowan Old Style", "Times New Roman",
     "Noto Serif Tamil", "Noto Serif Telugu", "Noto Serif Devanagari",
     "Noto Serif Kannada", "Noto Serif Malayalam", serif;
@@ -33,6 +45,9 @@
   --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans",
     "Noto Sans Tamil", "Noto Sans Telugu", "Noto Sans Devanagari", "Noto Sans Kannada",
     "Noto Sans Malayalam", sans-serif;
+  /* Mono is only for machine strings — the UPI link, timers, code. Money
+     itself stays in the text face with tabular numerals. */
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
 }
 
 * { box-sizing: border-box; }
@@ -82,14 +97,13 @@ body {
   font: inherit;
   font-size: 13px;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
 }
 .lang-pill:hover { border-color: var(--green); }
 .lang-pill.active {
   background: var(--green);
   border-color: var(--green);
   color: #fff;
-  box-shadow: 0 4px 12px rgba(22, 101, 52, 0.3);
 }
 
 /* ---------- layout ---------- */
@@ -192,7 +206,7 @@ body {
   font: inherit;
   font-size: 13px;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: border-color 0.15s ease, background 0.15s ease;
 }
 .chip:hover { border-color: var(--amber); background: var(--amber-soft); }
 
@@ -215,7 +229,7 @@ body {
   width: 52px; height: 52px;
   border: none;
   border-radius: 50%;
-  background: var(--amber);
+  background: var(--amber-deep);
   color: #fff;
   cursor: pointer;
   display: grid; place-items: center;
@@ -241,7 +255,7 @@ body {
   padding: 11px 18px;
   border: 1px solid transparent;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
   white-space: nowrap;
 }
 .btn.primary { background: var(--green); color: #fff; }
@@ -288,6 +302,7 @@ body {
 .qr-wrap img { display: block; width: 220px; height: 220px; }
 .upi-link {
   word-break: break-all;
+  font-family: var(--mono);
   font-size: 12px;
   color: var(--muted);
   background: #f5f0e3;
@@ -385,7 +400,7 @@ body {
   padding: 8px 13px;
   border-radius: 999px;
   white-space: nowrap;
-  transition: all 0.15s ease;
+  transition: background 0.15s ease, color 0.15s ease;
 }
 .shell-link:hover { color: var(--ink); background: #f5f0e3; }
 .shell-link.active { color: #fff; background: var(--green); }
@@ -401,7 +416,7 @@ body {
   background: #fff;
   color: var(--ink);
   cursor: pointer;
-  max-width: 260px;
+  max-width: 220px;
 }
 .engine-badge {
   display: inline-flex;
@@ -529,7 +544,7 @@ body {
 }
 .soundbox-head { display: flex; gap: 8px; align-items: center; font-size: 13px; font-weight: 700; }
 .playback-label { flex: 1; color: var(--muted); font-weight: 700; }
-.soundbox-timer { font-variant-numeric: tabular-nums; color: var(--muted); }
+.soundbox-timer { font-family: var(--mono); font-variant-numeric: tabular-nums; color: var(--muted); }
 .hero-transcript { min-height: 190px; display: flex; flex-direction: column; gap: 8px; margin: 16px 0; }
 .hero-line {
   max-width: 92%;
@@ -559,8 +574,9 @@ body {
 
 .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
 /* Steps are a quiet numbered list, not floating badges: a serif numeral
-   over a top rule, like a printed instruction card. */
-.step-card { border-top: 2px solid var(--green); }
+   over a top rule, like a printed instruction card. No card background,
+   no border, no shadow — the rule and the numeral carry it. */
+.step-card { border-top: 2px solid var(--green); padding-top: 14px; }
 .step-num {
   display: block;
   font-family: var(--serif);
@@ -579,6 +595,10 @@ body {
 .lang-card p { margin: 8px 0; font-size: 14px; color: #57534e; }
 
 .feature-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+/* Features are ledger rows, not cards: a dashed rule over each entry, like
+   items on a bill. Six identical rounded cards in a grid read as a
+   template; the rule, the numeral-free ink icon and the copy carry it. */
+.feature-card { border-top: 1px dashed var(--line); padding-top: 16px; }
 
 /* What it costs — an honest list, not pricing tiers. There is no
    subscription in this prototype, so nothing here invents one. */
@@ -687,7 +707,7 @@ body {
   50% { height: 38px; }
 }
 
-.call-timer { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: 0.02em; }
+.call-timer { font-family: var(--mono); font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: 0.02em; }
 .call-hint { margin: 0; font-size: 12.5px; color: var(--muted); text-align: center; max-width: 44ch; }
 
 .state-badge {
@@ -767,7 +787,7 @@ body {
   font-size: 14px;
 }
 .engine-status p { margin: 4px 0; }
-code { background: #f5f0e3; padding: 1px 6px; border-radius: 6px; font-size: 12.5px; }
+code { font-family: var(--mono); background: #f5f0e3; padding: 1px 6px; border-radius: 6px; font-size: 12.5px; }
 
 /* ================= responsive ================= */
 
