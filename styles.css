@@ -664,6 +664,9 @@ summary { cursor: pointer; }
 }
 
 .settings-page { max-width: 69rem; }
+@media (max-width: 43.999rem) {
+  .settings-page .page-head > .text-link { flex-basis: 100%; }
+}
 .settings-section {
   display: grid;
   gap: var(--space-16);
