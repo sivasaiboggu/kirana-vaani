@@ -2,80 +2,81 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dashboard — KiranaVaani</title>
-<meta name="description" content="Shop-owner dashboard: today's orders, revenue, top sellers, low-stock alerts, restock signals and voice-session history.">
-<link rel="stylesheet" href="styles.css">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shop dashboard — KiranaVaani</title>
+<meta name="description" content="See today’s bills, top sellers, restock requests and voice-session history for your shop.">
+<meta name="robots" content="noindex">
+<link rel="icon" href="./mark.svg" type="image/svg+xml">
+<link rel="manifest" href="./manifest.webmanifest">
+<script src="/theme-init.js"></script>
+<link rel="preload" href="./assets/fonts/bricolage-grotesque-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="./styles.css">
 </head>
 <body>
-<header id="appNav"></header>
+<a class="skip-link" href="#main">Skip to content</a>
+<header id="appNav" class="site-header"></header>
 
-<main class="page">
-  <div class="page-head">
+<main class="wrap page" id="main" tabindex="-1">
+  <header class="page-head">
     <div>
+      <p class="kicker">Shop dashboard</p>
       <h1 id="shopTitle">Dashboard</h1>
       <p class="muted" id="shopSub"></p>
     </div>
-    <div class="page-actions">
-      <a class="btn ghost" id="counterDemoLink" href="counter.html">Try a demo order</a>
-      <a class="btn primary" id="counterLink" href="counter.html">Open live voice counter</a>
+    <div class="actions">
+      <a class="text-link" id="counterDemoLink" href="counter.html">Try a demo order</a>
+      <a class="btn primary" href="counter.html">Open voice counter</a>
     </div>
-  </div>
+  </header>
 
   <div class="demo-banner" id="demoBanner" hidden>
     <span id="demoBannerText"></span>
-    <a class="btn primary" id="demoBannerLink" href="counter.html">Open the demo</a>
+    <a class="text-link" id="demoBannerLink" href="counter.html">Open the demo</a>
   </div>
 
-  <section class="stats-row">
-    <div class="card stat-card">
-      <span class="stat-label">Orders today</span>
-      <strong class="stat-value" id="statOrders">0</strong>
-    </div>
-    <div class="card stat-card">
-      <span class="stat-label">Revenue today</span>
+  <section class="day-ledger" aria-labelledby="dayTitle">
+    <div class="revenue">
+      <h2 class="kicker" id="dayTitle">Today’s billed total</h2>
       <strong class="stat-value" id="statRevenue">₹0.00</strong>
+      <p class="muted small">From bills in this browser.</p>
     </div>
-    <div class="card stat-card">
-      <span class="stat-label">Average bill</span>
-      <strong class="stat-value" id="statAvgBill">₹0.00</strong>
-    </div>
-    <div class="card stat-card">
-      <span class="stat-label">Voice sessions today</span>
-      <strong class="stat-value" id="statSessions">0</strong>
-    </div>
+    <dl class="stats-row">
+      <div><dt>Orders</dt><dd id="statOrders">0</dd></div>
+      <div><dt>Average bill</dt><dd id="statAvgBill">₹0.00</dd></div>
+      <div><dt>Voice sessions</dt><dd id="statSessions">0</dd></div>
+    </dl>
+    <div class="lang-split"><span class="kicker">Sessions by language</span><div id="langSplit"></div></div>
   </section>
 
-  <div class="lang-split" id="langSplit" aria-label="Sessions by language"></div>
-
   <div class="dash-grid">
-    <section class="card">
-      <div class="card-head"><h2>Top sellers today</h2></div>
-      <div id="topSellers" class="bar-list"></div>
-    </section>
-
-    <section class="card">
-      <div class="card-head"><h2>Low-stock alerts</h2></div>
-      <ul id="lowStock" class="signal-list"></ul>
-    </section>
-
-    <section class="card">
-      <div class="card-head"><h2>Restock signals</h2><span class="pill" id="signalCount">0</span></div>
-      <ul id="signalList" class="signal-list"></ul>
-      <p class="muted small">Every out-of-stock request a customer makes on the voice counter lands here, so you know what to reorder.</p>
-    </section>
-
-    <section class="card wide">
-      <div class="card-head"><h2>Voice-session history</h2></div>
-      <div id="sessionHistory"></div>
-    </section>
+    <div class="dash-column">
+      <section class="ledger-section">
+        <div class="card-head"><h2>Top sellers today</h2><span class="kicker">Quantity · Bill total</span></div>
+        <div id="topSellers" class="bar-list"></div>
+      </section>
+      <section class="ledger-section">
+        <div class="card-head"><h2 id="historyTitle">Recent sessions</h2></div>
+        <div id="sessionHistory"></div>
+      </section>
+    </div>
+    <div class="dash-column">
+      <section class="ledger-section stock-section">
+        <div class="card-head"><h2>Low stock</h2><span class="kicker" id="lowStockCount"></span></div>
+        <ul id="lowStock" class="signal-list"></ul>
+      </section>
+      <section class="ledger-section">
+        <div class="card-head"><h2>Restock signals</h2><span class="kicker" id="signalCount">0</span></div>
+        <ul id="signalList" class="signal-list"></ul>
+        <p class="muted small">Requests the shelf couldn’t fill.</p>
+      </section>
+    </div>
   </div>
 </main>
-
-<footer class="foot">
-  <p>Demo data is seeded on first open so the dashboard has life; every real voice session you finish on the live counter is recorded here too. Data lives in this browser only — there is no server.</p>
+<footer class="foot wrap">
+  <span>KiranaVaani</span>
+  <span>Includes sample orders and sessions ended on this device.</span>
+  <a href="privacy.html">Privacy and data</a>
 </footer>
-
-<script type="module" src="dashboard-page.js"></script>
+<script type="module" src="./dashboard-page.js"></script>
 </body>
 </html>

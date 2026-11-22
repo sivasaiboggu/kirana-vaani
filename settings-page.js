@@ -1,96 +1,144 @@
-// KiranaVaani — settings page.
-// Shop name / UPI VPA / default language / voice speed (per shop), plus the
-// Sarvam API key (shared, browser-localStorage only, never in the repo).
-
+import * as z from 'zod/mini';
 import { LANGUAGES } from './src/catalog.js';
-import { getShop } from './src/shops.js';
-import { getCurrentShopId, getSettings, saveSettings, getSarvamKey, setSarvamKey } from './src/store.js';
-import { initShell, runLayoutCheck } from './src/shell.js';
+import { KEYS, getSettings, getSarvamKey, saveSettings, storeRemove, storeSet } from './src/store.js';
+import { initShell } from './src/shell.js';
 import { loadSarvamKey, resolveVoiceEngine, SARVAM_CONFIG } from './src/sarvam.js';
 import { webSpeechSupported } from './src/voice.js';
 
 const $ = (id) => document.getElementById(id);
-
 const { shop } = initShell({ active: 'settings' });
 const settings = getSettings(shop);
-runLayoutCheck();
 
-$('shopSub').textContent = `${shop.name} · ${shop.city}, ${shop.state}`;
+const fields = {
+  shopName: ['shopName', 'nameError'],
+  vpa: ['shopVpa', 'vpaError'],
+  defaultLang: ['shopLang', 'languageError'],
+  voiceSpeed: ['voiceSpeed', 'speedError'],
+  key: ['sarvamKey', 'keyError'],
+};
 
-const langSelect = $('shopLang');
-for (const [code, meta] of Object.entries(LANGUAGES)) {
-  const opt = document.createElement('option');
-  opt.value = code;
-  opt.textContent = `${meta.label} · ${meta.english}`;
-  if (code === settings.defaultLang) opt.selected = true;
-  langSelect.appendChild(opt);
-}
-
-$('shopName').value = settings.shopName;
-$('shopVpa').value = settings.vpa;
-$('voiceSpeed').value = String(settings.voiceSpeed || 1.0);
-$('speedVal').textContent = `${Number(settings.voiceSpeed || 1.0).toFixed(1)}×`;
-$('voiceSpeed').addEventListener('input', (e) => {
-  $('speedVal').textContent = `${Number(e.target.value).toFixed(1)}×`;
+const shopSchema = z.object({
+  shopName: z.string().check(z.maxLength(120, 'Use 120 characters or fewer.')),
+  vpa: z.string().check(z.regex(/^[a-z0-9._+-]+@[a-z0-9.-]+$/i, 'Enter a UPI ID such as yourshop@bank.')),
+  defaultLang: z.enum(Object.keys(LANGUAGES), 'Choose one of the seven languages.'),
+  voiceSpeed: z.number().check(z.gte(0.5), z.lte(2)),
+});
+const keySchema = z.object({
+  key: z.string().check(z.minLength(1, 'Paste your Sarvam API key.'), z.regex(/^\S*$/, 'Remove any spaces inside the key.')),
 });
 
-$('shopForm').addEventListener('submit', (e) => {
-  e.preventDefault();
-  const next = saveSettings(shop.id, {
+function updateShop(shopName) {
+  $('shopSub').textContent = `${shopName} · ${shop.city}, ${shop.state}`;
+  $('shopSelect').selectedOptions[0].textContent = shopName;
+}
+
+function setFieldError(name, message = '') {
+  const [input, feedback] = fields[name];
+  $(feedback).textContent = message;
+  $(feedback).hidden = !message;
+  if (message) $(input).setAttribute('aria-invalid', 'true');
+  else $(input).removeAttribute('aria-invalid');
+}
+
+function reportIssues(issues) {
+  for (const issue of issues) {
+    const name = issue.path[0];
+    if (Object.hasOwn(fields, name)) setFieldError(name, issue.message);
+  }
+  const first = issues[0]?.path[0];
+  if (Object.hasOwn(fields, first)) $(fields[first][0]).focus();
+}
+
+for (const [name, [input]] of Object.entries(fields)) {
+  $(input).addEventListener('input', () => {
+    setFieldError(name);
+    $(name === 'key' ? 'keyNotice' : 'shopSaved').textContent = '';
+  });
+}
+
+updateShop(settings.shopName);
+for (const [code, { label, english }] of Object.entries(LANGUAGES)) {
+  const option = new Option(label === english ? english : `${label} · ${english}`, code);
+  option.selected = code === settings.defaultLang;
+  $('shopLang').add(option);
+}
+$('shopName').value = settings.shopName;
+$('shopVpa').value = settings.vpa;
+$('voiceSpeed').value = String(settings.voiceSpeed);
+function renderSpeed() {
+  $('speedVal').textContent = `${Number($('voiceSpeed').value).toFixed(1)}×`;
+}
+$('voiceSpeed').addEventListener('input', renderSpeed);
+renderSpeed();
+
+$('shopForm').addEventListener('submit', (event) => {
+  event.preventDefault();
+  for (const name of Object.keys(fields).filter((name) => name !== 'key')) setFieldError(name);
+  const result = shopSchema.safeParse({
     shopName: $('shopName').value.trim() || shop.name,
     vpa: $('shopVpa').value.trim() || shop.vpa,
-    defaultLang: langSelect.value,
-    voiceSpeed: Number($('voiceSpeed').value) || 1.0,
+    defaultLang: $('shopLang').value,
+    voiceSpeed: $('voiceSpeed').valueAsNumber,
   });
-  $('shopSaved').hidden = false;
-  $('shopSub').textContent = `${next.shopName} · ${shop.city}, ${shop.state}`;
+  if (!result.success) {
+    reportIssues(result.error.issues);
+    return;
+  }
+  const next = saveSettings(shop.id, result.data);
+  if (!next) {
+    $('shopSaved').textContent = 'Couldn’t save. Check that this browser allows site storage.';
+    return;
+  }
+  $('shopName').value = next.shopName;
+  $('shopVpa').value = next.vpa;
+  updateShop(next.shopName);
+  $('shopSaved').textContent = 'Shop details saved.';
 });
 
 function renderEngineStatus() {
-  const key = loadSarvamKey();
-  const engine = resolveVoiceEngine({ apiKey: key, webSpeechSupported: webSpeechSupported() });
-  const box = $('engineStatus');
-  box.innerHTML = '';
-  const line = document.createElement('p');
-  line.innerHTML = '';
-  const strong = document.createElement('strong');
-  strong.textContent = engine === 'sarvam'
-    ? 'Active engine: Sarvam AI (key configured)'
-    : engine === 'webspeech'
-      ? 'Active engine: Web Speech API (free fallback)'
-      : 'Active engine: none — text only';
-  line.appendChild(strong);
-  const models = document.createElement('p');
-  models.className = 'muted small';
-  models.textContent = `Models: chat ${SARVAM_CONFIG.models.chat} · STT ${SARVAM_CONFIG.models.stt} · TTS ${SARVAM_CONFIG.models.tts} · Base ${SARVAM_CONFIG.baseUrl}`;
-  box.append(line, models);
-  $('keyState').textContent = key
-    ? 'A key is saved in this browser (showing it back would expose it — paste a new one to replace it).'
-    : 'No key saved.';
-  const badge = $('engineBadge');
-  if (badge) {
-    badge.textContent = engine === 'sarvam'
-      ? 'Sarvam AI voice'
-      : engine === 'webspeech'
-        ? 'Web Speech voice'
-        : 'Text only';
-  }
+  const engine = resolveVoiceEngine({ apiKey: loadSarvamKey(), webSpeechSupported: webSpeechSupported() });
+  const label = { sarvam: 'Sarvam voice', webspeech: 'Browser voice', none: 'Text only' }[engine];
+  $('engineBadge').textContent = label;
+  const current = document.createElement('strong');
+  current.textContent = `Active provider: ${label}`;
+  const detail = document.createElement('p');
+  detail.className = 'muted small';
+  detail.textContent = engine === 'sarvam'
+    ? `${SARVAM_CONFIG.models.stt} for listening, ${SARVAM_CONFIG.models.chat} for chat and ${SARVAM_CONFIG.models.tts} for speech.`
+    : 'Typing works with any provider.';
+  $('engineStatus').replaceChildren(current, detail);
+  const hasSavedKey = Boolean(getSarvamKey());
+  $('keyState').textContent = hasSavedKey ? 'Key saved on this device. Paste a new key to replace it.' : 'No key saved in this browser.';
+  $('removeKeyBtn').disabled = !hasSavedKey;
 }
 
-renderEngineStatus();
-
-$('keyForm').addEventListener('submit', (e) => {
-  e.preventDefault();
-  const v = $('sarvamKey').value.trim();
-  if (v) {
-    setSarvamKey(v);
-    $('sarvamKey').value = '';
+$('keyForm').addEventListener('submit', (event) => {
+  event.preventDefault();
+  setFieldError('key');
+  const result = keySchema.safeParse({ key: $('sarvamKey').value.trim() });
+  if (!result.success) {
+    reportIssues(result.error.issues);
+    return;
   }
+  if (!storeSet(KEYS.sarvamKey, result.data.key)) {
+    $('keyNotice').textContent = 'Couldn’t save the key. Check that this browser allows site storage.';
+    return;
+  }
+  $('sarvamKey').value = '';
   renderEngineStatus();
+  $('keyNotice').textContent = 'Key saved.';
 });
 
 $('removeKeyBtn').addEventListener('click', () => {
-  setSarvamKey(null);
+  if (!storeRemove(KEYS.sarvamKey)) {
+    $('keyNotice').textContent = 'Couldn’t remove the key. Check that this browser allows site storage.';
+    return;
+  }
   $('sarvamKey').value = '';
+  setFieldError('key');
   renderEngineStatus();
+  $('sarvamKey').focus();
+  $('keyNotice').textContent = 'Saved key removed.';
 });
+
+renderEngineStatus();

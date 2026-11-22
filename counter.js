@@ -8,14 +8,13 @@
 // scripted order through the session (add &fast=1 for screenshots).
 
 import { KiranaAgent } from './src/agent.js';
-import { ITEMS, LANGUAGES, nameIn } from './src/catalog.js';
+import { LANGUAGES, nameIn } from './src/catalog.js';
 import { formatINR } from './src/billing.js';
-import { detectLanguage } from './src/intent.js';
-import { normalizeText } from './src/intent.js';
+import { detectLanguage, normalizeText } from './src/intent.js';
 import { VoiceSession, createDemoIO, createSilentIO, runDemoTurns, STATE_LABELS } from './src/session.js';
-import { getShop, shopCatalog } from './src/shops.js';
-import { getCurrentShopId, getSettings, recordSession } from './src/store.js';
-import { initShell, demoLink, runLayoutCheck } from './src/shell.js';
+import { shopCatalog } from './src/shops.js';
+import { getSettings, recordSession } from './src/store.js';
+import { initShell } from './src/shell.js';
 import { SarvamClient, SarvamConversation, loadSarvamKey, resolveVoiceEngine } from './src/sarvam.js';
 import { buildReceipt } from './src/receipt.js';
 import { WebSpeechIO, SarvamIO, webSpeechSupported } from './src/voice.js';
@@ -94,6 +93,8 @@ const agent = new KiranaAgent({ items, vpa: settings.vpa, merchantName: settings
 const state = { lang: settings.defaultLang || shop.lang || 'ta', demoRunning: false };
 let session = null;
 let timerId = null;
+let qrTotal = null;
+let qrRequest = 0;
 let lastAgentReply = '';
 let sarvamClient = null;
 let conversation = null;
@@ -116,12 +117,12 @@ const activeEngine = conversation ? 'sarvam' : (engine === 'webspeech' ? 'webspe
 
 function engineNote() {
   if (activeEngine === 'sarvam') {
-    return 'Voice engine: Sarvam AI — Saaras STT · sarvam-105b · Bulbul TTS (key configured).';
+    return 'Sarvam voice is ready. You can also type below.';
   }
   if (activeEngine === 'webspeech') {
-    return 'Voice engine: Web Speech API (free fallback). Add a Sarvam key in Settings for the Sarvam voice — Saaras, sarvam-105b and Bulbul.';
+    return 'Start a voice session or type an order below.';
   }
-  return 'Voice is not supported in this browser — type your order instead. (Chrome / Edge work best.)';
+  return 'Voice is unavailable in this browser. Type an order below.';
 }
 
 // One responder for the session: Sarvam when configured (with its own local
@@ -147,13 +148,17 @@ function addBubble(who, text, lang, note) {
     ? `You · ${LANGUAGES[lang] ? LANGUAGES[lang].english : lang}`
     : `${settings.shopName} · ${LANGUAGES[lang] ? LANGUAGES[lang].english : lang}`;
   div.appendChild(label);
-  div.appendChild(document.createTextNode(text));
+  const message = document.createElement('p');
+  if (Object.hasOwn(LANGUAGES, lang)) message.lang = lang;
+  message.textContent = text;
+  div.appendChild(message);
   if (note) {
     const n = document.createElement('span');
     n.className = 'bubble-note';
     n.textContent = note;
     div.appendChild(n);
   }
+  if ($('transcriptEmpty')) $('transcriptEmpty').remove();
   $('transcript').appendChild(div);
   $('transcript').scrollTop = $('transcript').scrollHeight;
 }
@@ -171,12 +176,13 @@ function renderBill() {
   const box = $('billLines');
   box.innerHTML = '';
   if (lines.length === 0) {
-    box.innerHTML = '<p class="muted empty-note">Nothing yet — order something and it appears here.</p>';
+    box.innerHTML = '<p class="muted empty-note">Items appear here as you order.</p>';
   } else {
     for (const line of lines) {
       const row = document.createElement('div');
       row.className = 'bill-row';
       const name = document.createElement('span');
+      name.lang = state.lang;
       name.textContent = nameIn(line.item, state.lang);
       const qty = document.createElement('span');
       qty.className = 'qty';
@@ -189,6 +195,7 @@ function renderBill() {
     }
   }
   $('billTotal').textContent = formatINR(agent.total);
+  if (qrTotal !== agent.total) $('qrCard').hidden = true;
   $('billCount').textContent = `${lines.length} item${lines.length === 1 ? '' : 's'}`;
   $('payBtn').disabled = agent.total <= 0;
 }
@@ -198,13 +205,12 @@ function renderSignals() {
   list.innerHTML = '';
   $('signalCount').textContent = String(agent.signals.length);
   if (agent.signals.length === 0) {
-    list.innerHTML = '<li class="muted empty-note">Out-of-stock requests land here so the shop knows what to reorder.</li>';
+    list.innerHTML = '<li class="muted empty-note">No out-of-stock requests at this counter.</li>';
     return;
   }
   for (const s of agent.signals.slice().reverse()) {
     const li = document.createElement('li');
     const when = new Date(s.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    li.innerHTML = '';
     const main = document.createElement('span');
     main.textContent = `${s.name} — asked ${s.requestedQty}, shelf had ${s.available} (${LANGUAGES[s.lang].english})`;
     const time = document.createElement('span');
@@ -220,13 +226,15 @@ function renderShelf() {
   // not the static catalogue — the agent clones the shelf per session, so
   // the catalogue itself is never mutated.
   const grid = $('shelfGrid');
-  grid.innerHTML = '';
   $('shelfCount').textContent = `${agent.items.length} items`;
+  if (!grid.parentElement.open) return;
+  const entries = document.createDocumentFragment();
   for (const item of agent.items) {
     const div = document.createElement('div');
     div.className = 'shelf-item';
     const nm = document.createElement('span');
     nm.className = 'nm';
+    nm.lang = state.lang;
     nm.textContent = nameIn(item, state.lang);
     const pr = document.createElement('span');
     pr.className = 'pr';
@@ -234,47 +242,56 @@ function renderShelf() {
     const badge = document.createElement('span');
     badge.className = `stock-badge ${item.stock === 0 ? 'out' : item.stock <= 8 ? 'low' : 'in'}`;
     badge.textContent = item.stock === 0 ? 'Out of stock' : item.stock <= 8 ? `Only ${item.stock} left` : `In stock · ${item.stock}`;
-    div.append(nm, document.createElement('br'), pr, document.createElement('br'), badge);
-    grid.appendChild(div);
+    div.append(nm, pr, badge);
+    entries.appendChild(div);
   }
+  grid.replaceChildren(entries);
 }
 
-function showQR(upiLink) {
+async function showQR(upiLink) {
+  const request = ++qrRequest;
   if (!upiLink) { $('qrCard').hidden = true; return; }
+  qrTotal = agent.total;
   $('qrCard').hidden = false;
-  $('upiLinkText').textContent = upiLink;
-  if (typeof window.qrcode === 'function') {
-    try {
-      const qr = window.qrcode(0, 'M');
-      qr.addData(upiLink);
-      qr.make();
-      $('qrImg').src = qr.createDataURL(6, 8);
-    } catch (e) {
-      $('qrImg').alt = 'QR generation failed — use the UPI link below';
-    }
+  $('upiLinkText').href = upiLink;
+  $('qrImg').alt = 'UPI QR code for this bill';
+  $('qrImg').removeAttribute('src');
+  try {
+    const { default: qrcode } = await import('./vendor/qrcode.js');
+    if (request !== qrRequest || $('qrCard').hidden) return;
+    const qr = qrcode(0, 'M');
+    qr.addData(upiLink);
+    qr.make();
+    $('qrImg').src = qr.createDataURL(6, 8);
+  } catch {
+    if (request === qrRequest) $('qrImg').alt = 'QR generation failed. Use the UPI link below.';
   }
 }
 
 function renderLangUI() {
   const ui = UI[state.lang];
   $('chatTitle').textContent = ui.chatTitle;
+  $('chatTitle').lang = state.lang;
   $('textInput').placeholder = ui.placeholder;
+  $('textInput').lang = state.lang;
   const chips = $('chips');
   chips.innerHTML = '';
   for (const c of ui.chips) {
     const b = document.createElement('button');
     b.type = 'button';
     b.className = 'chip';
+    b.lang = state.lang;
     b.textContent = c;
     b.addEventListener('click', () => { $('textInput').value = c; handleTyped(c); });
     chips.appendChild(b);
   }
   document.querySelectorAll('.lang-pill').forEach((p) => {
-    p.classList.toggle('active', p.dataset.lang === state.lang);
+    p.setAttribute('aria-pressed', String(p.dataset.lang === state.lang));
   });
   $('voiceStatus').textContent = session && session.active
     ? $('voiceStatus').textContent
     : engineNote();
+  renderBill();
   renderShelf();
 }
 
@@ -283,12 +300,12 @@ function setStateUI(next) {
   $('stateBadge').className = `state-badge state-${next}`;
   $('callCard').dataset.state = next;
   $('waveBox').dataset.state = next;
-  $('startBtn').disabled = !!session && session.active;
+  $('startBtn').disabled = activeEngine === 'none' || (!!session && session.active);
   $('endBtn').disabled = !session || !session.active;
   $('interruptBtn').disabled = !session || session.state !== 'speaking';
   if (next === 'listening') $('voiceStatus').textContent = 'Listening — speak now.';
   if (next === 'thinking') $('voiceStatus').textContent = 'Thinking…';
-  if (next === 'speaking') $('voiceStatus').textContent = 'Speaking… (speak over me to interrupt, or hit Interrupt)';
+  if (next === 'speaking') $('voiceStatus').textContent = 'Speaking. You can speak over the reply or choose Interrupt.';
   if (next === 'ended') $('voiceStatus').textContent = engineNote();
 }
 
@@ -390,6 +407,8 @@ async function startVoiceSession(kind = 'voice') {
   renderShelf();
   $('qrCard').hidden = true;
   $('summaryCard').hidden = true;
+  $('receiptLink').hidden = true;
+  $('transcript').replaceChildren();
   const s = newSession(kind);
   await s.start();
   startTimer();
@@ -411,15 +430,17 @@ function showSummary(summary) {
   const box = $('summaryBody');
   box.innerHTML = '';
   $('summaryCard').querySelector('h2').textContent = receipt.title;
+  $('summaryCard').querySelector('h2').lang = summary.lang;
+  box.lang = summary.lang;
 
   const head = document.createElement('div');
   head.className = 'receipt-head';
-  const shop = document.createElement('strong');
-  shop.textContent = receipt.shopName;
+  const shopName = document.createElement('strong');
+  shopName.textContent = receipt.shopName;
   const when = document.createElement('span');
   when.className = 'muted small';
   when.textContent = `${receipt.date} · ${receipt.time}`;
-  head.append(shop, document.createElement('br'), when);
+  head.append(shopName, document.createElement('br'), when);
   box.appendChild(head);
 
   if (receipt.lines.length === 0) {
@@ -469,6 +490,7 @@ function showSummary(summary) {
   box.appendChild(thanks);
 
   $('summaryCard').hidden = false;
+  $('receiptLink').hidden = false;
   // Save to the shop's session history for the dashboard.
   recordSession(shop.id, {
     ...summary,
@@ -511,36 +533,25 @@ async function runDemo(lang, fast = false) {
 
 // ---------- boot ----------
 
-function buildLangSwitch() {
-  const wrap = $('langSwitch');
-  for (const [code, meta] of Object.entries(LANGUAGES)) {
-    const b = document.createElement('button');
-    b.type = 'button';
-    b.className = 'lang-pill';
-    b.dataset.lang = code;
-    b.textContent = `${meta.label} · ${meta.english}`;
-    b.addEventListener('click', () => {
-      state.lang = code;
-      if (session) session.lang = code;
-      renderLangUI();
-    });
-    wrap.appendChild(b);
-  }
-}
+$('langSwitch').addEventListener('click', (event) => {
+  const lang = event.target.closest('button')?.dataset.lang;
+  if (!Object.hasOwn(UI, lang)) return;
+  state.lang = lang;
+  if (session) session.lang = lang;
+  renderLangUI();
+});
 
 $('shopTitle').textContent = settings.shopName;
-$('shopSub').textContent = `${shop.city}, ${shop.state} · ${shop.tagline}`;
+$('shopSub').textContent = `${shop.city}, ${shop.state}`;
 $('qrVpa').textContent = settings.vpa;
-runLayoutCheck();
 $('engineBadge').textContent = activeEngine === 'sarvam'
-  ? 'Sarvam AI voice'
+  ? 'Sarvam voice'
   : activeEngine === 'webspeech'
-    ? 'Web Speech voice'
+    ? 'Browser voice'
     : 'Text only';
 
-buildLangSwitch();
 renderLangUI();
-renderBill();
+$('shelfGrid').parentElement.addEventListener('toggle', renderShelf);
 renderSignals();
 setStateUI('idle');
 
@@ -549,9 +560,9 @@ $('endBtn').addEventListener('click', endSession);
 $('interruptBtn').addEventListener('click', () => { if (session) session.interrupt(); });
 $('demoBtn').addEventListener('click', () => runDemo(state.lang, false));
 $('newSessionBtn').addEventListener('click', () => { $('summaryCard').hidden = true; startVoiceSession('voice'); });
-$('sendBtn').addEventListener('click', () => handleTyped($('textInput').value));
-$('textInput').addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') handleTyped(e.target.value);
+$('composer').addEventListener('submit', (event) => {
+  event.preventDefault();
+  handleTyped($('textInput').value);
 });
 $('payBtn').addEventListener('click', () => {
   if (session && session.active) session.receive('pay');
@@ -567,7 +578,7 @@ $('payBtn').addEventListener('click', () => {
 // (&fast=1 shortens the pauses, for screenshots).
 const params = new URLSearchParams(window.location.search);
 const demoLang = params.get('demo');
-if (demoLang && DEMOS[demoLang]) {
+if (Object.hasOwn(DEMOS, demoLang)) {
   state.lang = demoLang;
   renderLangUI();
   setTimeout(() => runDemo(demoLang, params.get('fast') === '1'), 700);

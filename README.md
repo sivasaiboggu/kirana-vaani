@@ -8,23 +8,24 @@ out, keeps the running bill, and shows a UPI QR to pay. The shop owner gets a
 dashboard: today's orders, revenue, low-stock alerts, restock signals, top
 sellers and the full voice-session history.
 
-**No build step, no keys, no paid APIs.** Plain HTML, CSS and JavaScript.
-Open `index.html` (or run the server below) and it works.
+**The sample counter runs without a key.** The app is plain HTML, CSS and JavaScript, with a static production build.
 
 ## Pages
 
 | Page | What it is |
 | --- | --- |
-| `index.html` | SaaS landing page — hero with a live soundbox demo, how it works, the 7 languages, features, pricing (display only) |
+| `index.html` | Product introduction, sample order playback, seven language demos and cost |
 | `dashboard.html` | Shop-owner dashboard — today's orders, revenue, low-stock alerts, restock signals, top sellers, voice-session history, multi-shop switcher |
-| `counter.html` | **Live voice counter** — the call-like voice session (start from the dashboard or open directly) |
+| `counter.html` | **Open voice counter** — the call-like voice session (start from the dashboard or open directly) |
 | `settings.html` | Shop name, UPI VPA, default language, voice speed, Sarvam API key |
+| `privacy.html` | Browser storage, voice providers and payment data |
+| `404.html`, `500.html` | Static recovery pages |
 
 ## Project brief (master prompt, Section 1)
 
 - **Name:** KiranaVaani
 - **Type:** web app — a voice agent for kirana (corner) shops. Plain
-  HTML/CSS/JS, no build step, no server.
+  HTML/CSS/JS with a static Vite build.
 - **What it does (1 sentence):** a customer speaks an order in one of
   seven Indian languages; the agent checks stock, suggests a substitute,
   keeps the running bill, and shows a UPI QR to pay.
@@ -34,7 +35,7 @@ Open `index.html` (or run the server below) and it works.
 - **Core promise:** a customer speaks, the shop understands, the bill is
   right.
 - **Tone:** warm, plain, shopkeeper-human.
-- **Colours:** warm paper, ink green, one marigold accent.
+- **Colours:** warm paper, dark ink, one stamp blue accent.
 - **Reference sites:** Mobbin (real counter and voice flows), Land-book
   (editorial landing), Refero (design-system discipline).
 - **Platforms:** web — desktop and phone, via GitHub Pages.
@@ -42,55 +43,35 @@ Open `index.html` (or run the server below) and it works.
   running bill, UPI QR, restock signals, owner dashboard, settings that
   persist, Sarvam AI optional on the owner's own key.
 
-## Design system — the printed shop bill
+## Design system
 
-One signature visual idea, repeated with discipline: **the printed shop
-bill**. Flat warm paper, solid ink-green, one marigold accent used only
-where attention is needed, serif display type like a painted shop
-signboard (Georgia stack, Noto Serif fallbacks for Indic scripts),
-dashed receipt rules, tabular numerals for money. Features are ledger
-rows under dashed rules, not cards; steps are a quiet numbered list
-under a green rule. Motion only where it means something: the voice wave
-bars, a short fade on a new transcript line, the dashboard count-up.
-
-- **Tokens:** `tokens.json` (palette, type, spacing, radii, shadows,
-  motion rules, contrast table) and the `:root` block in `styles.css`.
-  Every colour is declared twice — hex first, then OKLCH — so browsers
-  that understand OKLCH use it and older ones keep the hex.
-- **Accent:** marigold `#d97706` — the flower on every Indian shop
-  counter, the one warm note against ink-green and paper. It marks the
-  mic, the speaking ring, the wave bars while speaking, low-stock and
-  restock marks, and the eyebrow labels: under 10% of any screen. The
-  mic uses the deeper `#b45309`, because white on `#d97706` is only
-  3.19:1 while white on `#b45309` is 5.02:1.
-- **Type:** display serif + system sans (keeps all seven scripts
-  legible) + mono, used only for machine strings (UPI link, timers,
-  code). Money always uses tabular numerals.
-- **Contrast:** every text pair in `tokens.json` passes WCAG AA
-  (4.5:1). Muted text is `#6e675f` (4.95:1 on paper) — the old
-  `#78716c` was 4.26:1, under AA for small text.
-- **Guarded by tests:** `tests/copy.test.js` bans the clichés, the
-  decorative symbols and the gradient/glass/shimmer tells, and checks
-  the tokens file (OKLCH present, no `transition: all`, contrast table
-  all passing).
+The signature is a ruled shop ledger, from the sample bill through to the sale receipt and daily totals. [Redesign notes](docs/redesign.md) cover every screen, the measured light and dark contrast table, screen flows and the launch checklist. The source values live in [tokens.json](tokens.json), [CSS variables](theme/tokens.css) and the [Tailwind theme](theme/tailwind.css).
 
 ## Quick start
 
-```bash
-python3 -m http.server 8000
-# open http://localhost:8000
+Use Node.js 24.22.3 and npm. The lockfile pins the frontend dependencies.
+
+```sh
+npm ci
+npm start
 ```
 
-Or just open `index.html` in a browser (everything is relative; the QR code
-loads from a CDN — see "A note on QR codes" below).
+Open `http://127.0.0.1:8000/`. The browser demo needs no environment variables.
+
+```sh
+npm run build
+npm run preview
+```
+
+The default production base is `/kirana-vaani/`. Publish `dist/` on the static host and use HTTPS for voice and the offline shell. Set `KIRANA_BASE=/` for a root deployment and use the same value for build and preview.
 
 ## The live voice session
 
-From the dashboard click **Live voice counter** (or open `counter.html`).
+From the dashboard click **Open voice counter** (or open `counter.html`).
 Big **Start voice session** opens a call-like screen:
 
 - **States:** idle → listening → thinking → speaking, with a live waveform,
-  a pulsing ring while listening, and a session timer.
+  a state label and a session timer.
 - **Continuous turn-taking:** after the agent speaks its reply it listens
   again automatically — no tapping the mic for every turn. The whole flow
   (order → stock → substitute → bill → QR) is completable by voice alone.
@@ -174,14 +155,7 @@ The counter shows which engine is active.
 
 ### Where to put your key (when you have one)
 
-Three places, in priority order — pick **one**:
-
-1. **Settings page** (`settings.html`) — paste the key, it is stored only
-   in the browser's localStorage, never in the project files.
-2. **`sarvam.config.js`** — copy `sarvam.config.example.js` to
-   `sarvam.config.js` (same folder) and paste your key. It is gitignored;
-   never commit it.
-3. **Before the app loads**, set `window.SARVAM_API_KEY` in any script.
+For a local pilot, save your key in Settings. The browser keeps it in localStorage. A self-hosted integration can define `window.SARVAM_API_KEY` or `window.SARVAM_CONFIG.apiKey` before the app module loads. A host-supplied value takes precedence. See `sarvam.config.example.js` for the expected shape.
 
 Get a key at https://dashboard.sarvam.ai (sign up → create an API key).
 **No key is shipped or hardcoded** — the example file contains only a
@@ -243,9 +217,12 @@ rice, groundnut oil, coffee — each has a substitute the agent offers
 
 ## Tests
 
-```bash
-npm test        # 110 tests, all green
+```sh
+npx playwright install chromium
+npm test
 ```
+
+Set `CHROME_BIN` to use an installed Chromium instead. `npm test` builds the app and runs the Node and browser suites.
 
 - `tests/agent.test.js`, `tests/intent.test.js`, `tests/billing.test.js` — the
   original 46 (intent parsing in all languages, billing maths,
@@ -266,8 +243,7 @@ npm test        # 110 tests, all green
   including item names in the receipt language
 - `tests/upi.test.js` — the UPI link round-trips (merchant, amount,
   currency, note) exactly as the QR encodes it
-- `tests/layout.test.js` — every page in headless Chrome over CDP: zero
-  horizontal overflow at a true 390px phone width and at 1280px desktop
+- `tests/layout.test.js` — built pages on phone and desktop in both modes, axe, typed ordering through receipt and history, settings validation and offline navigation.
 
 The QR payload was also verified end-to-end: the exact UPI string for a
 ₹489.00 bill was encoded with the vendored library and decoded back to the
@@ -283,16 +259,12 @@ per shop) for the real shop's VPA before using it with real money.
 
 ## Screenshots
 
-- `screenshots/landing.png` — landing page
-- `screenshots/dashboard.png` — owner dashboard (Chennai shop)
-- `screenshots/session-ta-mid.png` — Tamil voice session, mid-call
-- `screenshots/session-ta.png` — Tamil session ended, bill ₹499 + QR
-- `screenshots/session-te.png` — Telugu session ended
-- `screenshots/session-ml.png` — Malayalam session ended, bill ₹499 + QR
-- `screenshots/session-mr.png` — Marathi session ended, bill ₹499 + QR
-- `screenshots/receipt-ta.png` — session summary as a paper receipt (Tamil)
-- `screenshots/settings.png` — settings page
-- `screenshots/landing-mobile.png` — landing page at 390px
+[Review images](docs/review/) compare the prior and redesigned screens. To reproduce the capture, run the preview server and then:
+
+```sh
+node scripts/shots.mjs http://127.0.0.1:4173/kirana-vaani/ screenshots/light
+node scripts/shots.mjs http://127.0.0.1:4173/kirana-vaani/ screenshots/dark dark
+```
 
 ## Files
 
@@ -301,7 +273,8 @@ index.html  landing.js           # landing page
 dashboard.html  dashboard-page.js
 counter.html  counter.js         # live voice counter
 settings.html  settings-page.js
-styles.css                       # whole design system
+styles.css                       # screen layouts and components
+theme/                           # CSS roles, fonts and Tailwind theme
 tokens.json                      # design tokens: OKLCH palette, type, contrast table
 src/agent.js    # shop brain: orders, stock, substitutes, bill, QR
 src/catalog.js  # 34-item catalogue + substitutes
@@ -317,8 +290,8 @@ src/sarvam.js   # Sarvam AI client + tools + conversation + register
 src/voice.js    # WebSpeechIO / SarvamIO / SilentIO
 src/shell.js    # shared top bar (nav + shop switcher + engine badge)
 sarvam.config.example.js  # copy to sarvam.config.js, paste your key
-tests/          # 110 tests (node --test)
-screenshots/
+tests/          # logic, accessibility and browser flow checks
+public/         # manifest, brand marks and social sharing image
 scripts/shots.mjs  # real headless-Chrome renders of every screen
 vendor/qrcode.js  # qrcode-generator 1.4.4 (MIT)
 ```

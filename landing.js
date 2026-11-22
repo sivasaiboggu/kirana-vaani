@@ -1,95 +1,117 @@
-// KiranaVaani — landing page.
-// Animated playback of a real Tamil session inside the hero soundbox, and
-// ?demo=… handling (the demo itself lives on the live counter).
-// The nav carries the same shop switcher + engine badge as the app pages,
-// and the hero soundbox names the current shop.
-
 import { LANGUAGES } from './src/catalog.js';
-import { listShops, getShop } from './src/shops.js';
-import { getCurrentShopId, setCurrentShopId } from './src/store.js';
-import { runLayoutCheck } from './src/shell.js';
+import { initShell, demoLink } from './src/shell.js';
+import { icon } from './src/icons.js';
 import { loadSarvamKey, resolveVoiceEngine } from './src/sarvam.js';
 import { webSpeechSupported } from './src/voice.js';
 
-// Nav: shop switcher + engine badge, same as the app shell.
-const currentShop = getShop(getCurrentShopId());
-const shopSelect = document.getElementById('shopSelect');
-for (const s of listShops()) {
-  const opt = document.createElement('option');
-  opt.value = s.id;
-  opt.textContent = s.name; // city is already in the hero; the name alone fits the select
-  if (s.id === currentShop.id) opt.selected = true;
-  shopSelect.appendChild(opt);
-}
-shopSelect.addEventListener('change', () => {
-  if (setCurrentShopId(shopSelect.value)) window.location.reload();
-});
+const $ = (id) => document.getElementById(id);
+initShell({ active: 'home' });
 const engine = resolveVoiceEngine({ apiKey: loadSarvamKey(), webSpeechSupported: webSpeechSupported() });
-document.getElementById('engineBadge').textContent = engine === 'sarvam'
-  ? 'Sarvam AI voice'
-  : engine === 'webspeech'
-    ? 'Web Speech voice'
-    : 'Text only';
+$('engineBadge').textContent = engine === 'sarvam' ? 'Sarvam voice' : engine === 'webspeech' ? 'Browser voice' : 'Text only';
+$('heroShopLabel').textContent = `Played back · ${LANGUAGES.ta.english}`;
+$('heroLocation').textContent = 'Sri Lakshmi Stores, Chennai';
 
-// Hero soundbox names the current shop, not a hardcoded one. It is a
-// playback of a recorded session, so it says so — never "LIVE".
-document.getElementById('heroShopLabel').textContent =
-  `Played back · ${currentShop.name}, ${currentShop.city}`;
+const examples = {
+  ta: 'ஆசீர்வாத் ஆட்டா 5 கிலோ இருக்கா?',
+  te: 'ఆశీర్వాద్ గోధుమ పిండి 5 కిలోలు',
+  hi: 'आशीर्वाद आटा 5 किलो',
+  kn: 'ಆಶೀರ್ವಾದ್ ಗೋಧಿ ಹಿಟ್ಟು 5 ಕಿಲೋ',
+  en: 'Aashirvaad atta 5 kg please',
+  ml: 'ആശിർവാദ് ആട്ട 5 കിലോ ഉണ്ടോ?',
+  mr: 'आशीर्वाद आटा 5 किलो पाहिजे',
+};
 
-runLayoutCheck();
+for (const [code, { label, english }] of Object.entries(LANGUAGES)) {
+  const row = document.createElement('li');
+  const link = document.createElement('a');
+  link.href = demoLink(code);
+  const name = document.createElement('strong');
+  name.lang = code;
+  name.textContent = label;
+  const translation = document.createElement('span');
+  translation.className = 'muted';
+  translation.textContent = label === english ? '' : english;
+  const example = document.createElement('span');
+  example.className = 'language-example';
+  example.lang = code;
+  example.textContent = examples[code];
+  const arrow = document.createElement('span');
+  arrow.className = 'language-arrow';
+  arrow.innerHTML = icon('arrow');
+  link.append(name, translation, example, arrow);
+  row.append(link);
+  $('languageList').append(row);
+}
 
-const LINES = [
-  { who: 'user', text: 'ஆசீர்வாத் ஆட்டா 5 கிலோ இருக்கா?', bill: '₹0.00' },
-  { who: 'agent', text: '5 கிலோ ஆசீர்வாத் ஆட்டா சேர்த்தாச்சு — ₹275.00.', bill: '₹275.00' },
-  { who: 'user', text: 'பாஸ்மதி அரிசி 2 கிலோ', bill: '₹275.00' },
-  { who: 'agent', text: 'பாஸ்மதி அரிசி ஸ்டாக் இல்லை. அதுக்கு பதிலா பொன்னி அரிசி சேர்க்கவா?', bill: '₹275.00' },
-  { who: 'user', text: 'சரி', bill: '₹275.00' },
-  { who: 'agent', text: 'சரி — 2 கிலோ பொன்னி அரிசி சேர்த்துட்டேன். இப்ப பில்: ₹403.00.', bill: '₹403.00' },
-  { who: 'user', text: '2 கிலோ சர்க்கரை', bill: '₹403.00' },
-  { who: 'agent', text: '2 கிலோ சர்க்கரை சேர்த்தாச்சு — ₹96.00. இதுவரை பில்: ₹499.00.', bill: '₹499.00' },
+const lines = [
+  ['Customer', examples.ta, '₹0.00'],
+  ['Shop', '5 கிலோ ஆசீர்வாத் ஆட்டா சேர்த்தாச்சு. ₹275.00.', '₹275.00'],
+  ['Customer', 'பாஸ்மதி அரிசி 2 கிலோ', '₹275.00'],
+  ['Shop', 'பாஸ்மதி அரிசி ஸ்டாக் இல்லை. பொன்னி அரிசி சேர்க்கவா?', '₹275.00'],
+  ['Customer', 'சரி', '₹275.00'],
+  ['Shop', '2 கிலோ பொன்னி அரிசி சேர்த்தாச்சு. மொத்தம் ₹403.00.', '₹403.00'],
+  ['Customer', '2 கிலோ சர்க்கரை', '₹403.00'],
+  ['Shop', 'சர்க்கரை சேர்த்தாச்சு. மொத்தம் ₹499.00.', '₹499.00'],
 ];
 
-const box = document.getElementById('heroTranscript');
-const billEl = document.getElementById('heroBill');
-const timerEl = document.getElementById('heroTimer');
-let seconds = 0;
-setInterval(() => {
-  seconds += 1;
-  timerEl.textContent = `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
-}, 1000);
+const transcript = $('heroTranscript');
+const control = $('playbackControl');
+let nextLine = 2;
+let elapsed = 0;
+let playback;
 
-let i = 0;
-function showNext() {
-  if (i >= LINES.length) {
-    setTimeout(() => {
-      box.innerHTML = '';
-      billEl.textContent = '₹0.00';
-      i = 0;
-      showNext();
-    }, 4500);
+function showLine(index) {
+  const [sender, text, amount] = lines[index];
+  const line = document.createElement('div');
+  line.className = 'hero-line';
+  const label = document.createElement('span');
+  label.className = 'hero-who';
+  label.textContent = sender;
+  const message = document.createElement('span');
+  message.lang = 'ta';
+  message.textContent = text;
+  line.append(label, message);
+  transcript.append(line);
+  $('heroBill').textContent = amount;
+  transcript.scrollTop = transcript.scrollHeight;
+}
+
+function updatePlayback() {
+  elapsed += 1;
+  $('heroTimer').textContent = `00:${String(elapsed).padStart(2, '0')}`;
+  if (elapsed % 2 === 0) showLine(nextLine++);
+  if (nextLine === lines.length) {
+    clearInterval(playback);
+    playback = null;
+    control.textContent = 'Replay order';
+  }
+}
+
+showLine(0);
+showLine(1);
+
+control.addEventListener('click', () => {
+  if (playback) {
+    clearInterval(playback);
+    playback = null;
+    control.textContent = 'Resume playback';
     return;
   }
-  const line = LINES[i];
-  const div = document.createElement('div');
-  div.className = `hero-line ${line.who}`;
-  const who = document.createElement('span');
-  who.className = 'hero-who';
-  who.textContent = line.who === 'user' ? 'Customer' : 'Agent';
-  div.append(who, document.createTextNode(line.text));
-  box.appendChild(div);
-  billEl.textContent = line.bill;
-  i += 1;
-  setTimeout(showNext, line.who === 'user' ? 1400 : 2100);
-}
-showNext();
+  if (nextLine === lines.length) {
+    transcript.replaceChildren();
+    nextLine = 2;
+    elapsed = 0;
+    $('heroTimer').textContent = '00:00';
+    showLine(0);
+    showLine(1);
+  }
+  control.textContent = 'Pause playback';
+  playback = setInterval(updatePlayback, 1000);
+});
 
-// ?demo=ta|te|hi|kn|en — the demo runs on the live counter; point at it.
-const params = new URLSearchParams(window.location.search);
-const demoLang = params.get('demo');
-if (demoLang && LANGUAGES[demoLang]) {
-  const banner = document.getElementById('demoBanner');
-  banner.hidden = false;
-  document.getElementById('demoBannerText').textContent =
-    `Demo order available in ${LANGUAGES[demoLang].english} — watch it run on the live voice counter.`;
-  document.getElementById('demoBannerLink').href = `counter.html?demo=${demoLang}`;
+const demoLang = new URLSearchParams(location.search).get('demo');
+if (Object.hasOwn(examples, demoLang)) {
+  $('demoBanner').hidden = false;
+  $('demoBannerText').textContent = `A sample order is available in ${LANGUAGES[demoLang].english}.`;
+  $('demoBannerLink').href = demoLink(demoLang);
 }

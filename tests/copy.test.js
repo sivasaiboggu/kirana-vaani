@@ -71,7 +71,8 @@ test('no gradient, glass or shimmer tells left in the stylesheet', () => {
 
 test('design tokens: OKLCH colours with hex fallbacks, contrast table passes AA', () => {
   const css = fs.readFileSync(path.join(ROOT, 'styles.css'), 'utf8');
-  assert.ok(css.includes('oklch('), 'styles.css should declare colours in OKLCH');
+  const palette = fs.readFileSync(path.join(ROOT, 'theme/tokens.css'), 'utf8');
+  assert.ok(palette.includes('oklch('), 'theme should declare colours in OKLCH');
   assert.ok(!css.includes('transition: all'), 'styles.css still animates "all" — scope transitions to the property that changes');
   const tokens = JSON.parse(fs.readFileSync(path.join(ROOT, 'tokens.json'), 'utf8'));
   for (const [name, value] of Object.entries(tokens.color)) {
@@ -80,10 +81,21 @@ test('design tokens: OKLCH colours with hex fallbacks, contrast table passes AA'
   }
   assert.ok(tokens.accent && tokens.accent.hex, 'tokens.json should name the one accent and why');
   assert.ok(tokens.contrast.length >= 10, 'tokens.json should carry a real contrast table');
-  for (const row of tokens.contrast) {
-    assert.ok(row.ratio >= 4.5, `contrast too low for AA text: ${row.pair} is ${row.ratio}:1`);
-    assert.equal(row.aa, 'pass', `${row.pair} is not marked as passing AA`);
+  function luminance(hex) {
+    const channels = hex.slice(1).match(/../g).map((part) => parseInt(part, 16) / 255);
+    const linear = channels.map((value) => value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4);
+    return linear[0] * 0.2126 + linear[1] * 0.7152 + linear[2] * 0.0722;
   }
+  for (const [rows, minimum] of [[tokens.contrast, 4.5], [tokens.nonTextContrast, 3]]) {
+    for (const { foreground, background, pair, mode, ratio, aa } of rows) {
+      const light = luminance(tokens.color[foreground].hex);
+      const dark = luminance(tokens.color[background].hex);
+      assert.equal(Number(((Math.max(light, dark) + 0.05) / (Math.min(light, dark) + 0.05)).toFixed(2)), ratio, `${mode} ${pair}`);
+      assert.ok(ratio >= minimum, `${mode} ${pair} falls below ${minimum}:1`);
+      assert.equal(aa, 'pass');
+    }
+  }
+
 });
 
 test('landing states the real cost, not invented tiers', () => {

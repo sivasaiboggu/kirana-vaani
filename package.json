@@ -1,11 +1,24 @@
 {
-  "description": "KiranaVaani \u2014 SaaS voice agent for kirana shops (Tamil, Telugu, Hindi, Kannada, English, Malayalam, Marathi). Landing page, owner dashboard with 3 demo shops, live voice counter with continuous turn-taking and barge-in, and Sarvam AI (Saaras / sarvam-105b / Bulbul) with free Web Speech fallback.",
+  "description": "KiranaVaani — SaaS voice agent for kirana shops (Tamil, Telugu, Hindi, Kannada, English, Malayalam, Marathi). Landing page, owner dashboard with 3 demo shops, live voice counter with continuous turn-taking and barge-in, and Sarvam AI (Saaras / sarvam-105b / Bulbul) with free Web Speech fallback.",
   "license": "MIT",
   "name": "kirana-vaani",
   "scripts": {
-    "start": "python3 -m http.server 8000",
-    "test": "node --test tests/*.test.js"
+    "start": "vite --base /",
+    "test": "npm run build && node --test tests/*.test.js",
+    "build": "vite build && node scripts/offline.mjs",
+    "preview": "vite preview"
   },
   "type": "module",
-  "version": "3.2.0"
+  "version": "3.2.0",
+  "dependencies": {
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "4.14.0",
+    "playwright": "1.65.1",
+    "vite": "8.3.8"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  }
 }

@@ -55,6 +55,7 @@ test('key loading: config file first, then storage, never a hardcoded key', () =
   const storage = { getItem: () => 'stored-key', setItem: () => {} };
   assert.equal(loadSarvamKey({ windowObj: { SARVAM_API_KEY: 'cfg-key' }, storage }), 'cfg-key');
   assert.equal(loadSarvamKey({ windowObj: {}, storage }), 'stored-key');
+  assert.equal(loadSarvamKey({ windowObj: {}, storage: { getItem: () => JSON.stringify('saved-key') } }), 'saved-key');
   assert.equal(loadSarvamKey({ windowObj: {}, storage: { getItem: () => null } }), null);
   assert.equal(loadSarvamKey({ windowObj: {} }), null);
   assert.equal(sarvamConfigured(KEY), true);
