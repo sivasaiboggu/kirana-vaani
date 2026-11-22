@@ -4,69 +4,49 @@
 // top bar). Demo data is seeded on first open; every real voice session you
 // finish on the live counter is recorded here too.
 
-import { LANGUAGES, nameIn } from './src/catalog.js';
+import { LANGUAGES } from './src/catalog.js';
 import { formatINR } from './src/billing.js';
-import { getShop, shopCatalog } from './src/shops.js';
-import { getCurrentShopId, getSettings, getSessions } from './src/store.js';
+import { shopCatalog } from './src/shops.js';
+import { getSettings, getSessions } from './src/store.js';
 import { summarizeSessions } from './src/dashboard.js';
 import { loadSarvamKey, resolveVoiceEngine } from './src/sarvam.js';
 import { webSpeechSupported } from './src/voice.js';
-import { initShell, demoLink, runLayoutCheck } from './src/shell.js';
+import { initShell, demoLink } from './src/shell.js';
 
 const $ = (id) => document.getElementById(id);
 
 const { shop } = initShell({ active: 'dashboard' });
 const settings = getSettings(shop);
-runLayoutCheck();
 
 // Engine badge: same automatic resolution as the live counter.
 const engine = resolveVoiceEngine({ apiKey: loadSarvamKey(), webSpeechSupported: webSpeechSupported() });
 $('engineBadge').textContent = engine === 'sarvam'
-  ? 'Sarvam AI voice'
+  ? 'Sarvam voice'
   : engine === 'webspeech'
-    ? 'Web Speech voice'
+    ? 'Browser voice'
     : 'Text only';
 const items = shopCatalog(shop);
 const sessions = getSessions(shop.id);
 const summary = summarizeSessions(sessions, items);
 
-$('shopTitle').textContent = `${settings.shopName} — Dashboard`;
-$('shopSub').textContent = `${shop.city}, ${shop.state} · ${shop.tagline}`;
-$('counterLink').href = 'counter.html';
+$('shopTitle').textContent = settings.shopName;
+$('shopSub').textContent = `${shop.city}, ${shop.state}`;
 $('counterDemoLink').href = demoLink(settings.defaultLang || shop.lang);
 
 // ?demo=… on the dashboard: the demo lives on the counter — point at it.
 const params = new URLSearchParams(window.location.search);
 const demoLang = params.get('demo');
-if (demoLang && LANGUAGES[demoLang]) {
+if (Object.hasOwn(LANGUAGES, demoLang)) {
   const banner = $('demoBanner');
   banner.hidden = false;
   $('demoBannerLink').href = demoLink(demoLang);
-  $('demoBannerText').textContent = `Demo order available in ${LANGUAGES[demoLang].english} — watch it run on the live voice counter.`;
+  $('demoBannerText').textContent = `A sample order is available in ${LANGUAGES[demoLang].english}.`;
 }
 
-// ---------- stats ----------
-// Count-up animation (Magic UI number-ticker, plain JS): values tick up
-// from 0 so the dashboard feels alive. Skipped under reduced motion.
-const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-function countUp(el, target, format) {
-  if (reduceMotion) { el.textContent = format(target); return; }
-  const start = performance.now();
-  const dur = 650;
-  const step = (now) => {
-    const p = Math.min(1, (now - start) / dur);
-    const eased = 1 - Math.pow(1 - p, 3);
-    el.textContent = format(target * eased);
-    if (p < 1) requestAnimationFrame(step);
-    else el.textContent = format(target);
-  };
-  requestAnimationFrame(step);
-}
-function stat(id, value) { $(id).textContent = value; }
-countUp($('statOrders'), summary.orders, (v) => String(Math.round(v)));
-countUp($('statRevenue'), summary.revenue, (v) => formatINR(v));
-countUp($('statAvgBill'), summary.avgBill, (v) => formatINR(v));
-countUp($('statSessions'), summary.sessions, (v) => String(Math.round(v)));
+$('statOrders').textContent = String(summary.orders);
+$('statRevenue').textContent = formatINR(summary.revenue);
+$('statAvgBill').textContent = formatINR(summary.avgBill);
+$('statSessions').textContent = String(summary.sessions);
 
 // Sessions by language — real data from today's sessions.
 const splitBox = $('langSplit');
@@ -100,9 +80,10 @@ if (summary.topSellers.length === 0) {
     name.textContent = t.name;
     const track = document.createElement('div');
     track.className = 'bar-track';
+    track.setAttribute('aria-hidden', 'true');
     const fill = document.createElement('div');
     fill.className = 'bar-fill';
-    fill.style.width = `${Math.max(6, Math.round((t.qty / max) * 100))}%`;
+    fill.style.width = `${(t.qty / max) * 100}%`;
     track.appendChild(fill);
     const val = document.createElement('span');
     val.className = 'bar-val';
@@ -115,6 +96,7 @@ if (summary.topSellers.length === 0) {
 // ---------- low stock ----------
 const lowBox = $('lowStock');
 lowBox.innerHTML = '';
+$('lowStockCount').textContent = `${summary.lowStock.length} items`;
 if (summary.lowStock.length === 0) {
   lowBox.innerHTML = '<li class="muted empty-note">Everything is well stocked.</li>';
 } else {
@@ -122,10 +104,10 @@ if (summary.lowStock.length === 0) {
     const li = document.createElement('li');
     li.className = it.out ? 'alert-out' : 'alert-low';
     const main = document.createElement('span');
-    main.textContent = `${it.name} — ${it.out ? 'out of stock' : `only ${it.stock} ${it.unit} left`}`;
+    main.textContent = it.name;
     const tag = document.createElement('span');
     tag.className = 'when';
-    tag.textContent = it.out ? 'Restock now' : 'Running low';
+    tag.textContent = it.out ? 'Out of stock' : `${it.stock} ${it.unit} left`;
     li.append(main, tag);
     lowBox.appendChild(li);
   }
@@ -159,17 +141,20 @@ if (sessions.length === 0) {
 } else {
   const table = document.createElement('table');
   table.className = 'data-table';
-  const head = document.createElement('tr');
+  const head = table.createTHead().insertRow();
   for (const h of ['Time', 'Language', 'Items', 'Total', 'Transcript']) {
     const th = document.createElement('th');
+    th.scope = 'col';
     th.textContent = h;
     head.appendChild(th);
   }
-  table.appendChild(head);
+  const body = table.createTBody();
   for (const s of sessions) {
-    const tr = document.createElement('tr');
+    const tr = body.insertRow();
     const time = document.createElement('td');
-    time.textContent = new Date(s.startedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const date = new Date(s.startedAt);
+    time.textContent = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    if (date.toDateString() !== new Date().toDateString()) time.textContent = date.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ' · ' + time.textContent;
     const lang = document.createElement('td');
     lang.textContent = LANGUAGES[s.lang] ? LANGUAGES[s.lang].english : s.lang;
     const itemsCell = document.createElement('td');
@@ -185,19 +170,23 @@ if (sessions.length === 0) {
     list.className = 'mini-transcript';
     for (const t of s.turns || []) {
       const line = document.createElement('p');
-      line.innerHTML = '';
       const who = document.createElement('strong');
       who.textContent = t.who === 'user' ? 'Customer: ' : 'Agent: ';
-      line.append(who, document.createTextNode(t.text));
+      const text = document.createElement('span');
+      if (Object.hasOwn(LANGUAGES, t.lang)) text.lang = t.lang;
+      text.textContent = t.text;
+      line.append(who, text);
       list.appendChild(line);
     }
     details.appendChild(list);
     trans.appendChild(details);
     tr.append(time, lang, itemsCell, total, trans);
-    table.appendChild(tr);
   }
   const scroller = document.createElement('div');
   scroller.className = 'table-scroll';
+  scroller.tabIndex = 0;
+  scroller.setAttribute('role', 'region');
+  scroller.setAttribute('aria-labelledby', 'historyTitle');
   scroller.appendChild(table);
   histBox.appendChild(scroller);
 }

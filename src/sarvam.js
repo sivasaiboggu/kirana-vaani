@@ -57,7 +57,14 @@ export function loadSarvamKey({ windowObj = null, storage = null } = {}) {
   try {
     const store = storage || (typeof localStorage !== 'undefined' ? localStorage : null);
     const v = store && store.getItem('kirana.sarvam.key');
-    if (v && String(v).trim()) return String(v).trim();
+    if (v && String(v).trim()) {
+      // Settings stores JSON strings. Older or manually configured values may be raw.
+      try {
+        const decoded = JSON.parse(v);
+        if (typeof decoded === 'string') return decoded.trim() || null;
+      } catch { /* raw key */ }
+      return String(v).trim();
+    }
   } catch (err) { /* storage unavailable — no key */ }
   return null;
 }

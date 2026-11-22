@@ -2,111 +2,120 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Live voice counter — KiranaVaani</title>
-<meta name="description" content="The live voice counter: a call-like voice session with a kirana shop. Speak in Tamil, Telugu, Hindi, Kannada or English — the agent takes your order, checks stock, suggests substitutes and shows a UPI QR.">
-<link rel="stylesheet" href="styles.css">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Voice counter — KiranaVaani</title>
+<meta name="description" content="Speak or type an order in seven languages, check what’s on the shelf and see your running bill.">
+<meta name="robots" content="noindex">
+<link rel="icon" href="./mark.svg" type="image/svg+xml">
+<link rel="manifest" href="./manifest.webmanifest">
+<script src="/theme-init.js"></script>
+<link rel="preload" href="./assets/fonts/bricolage-grotesque-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="./styles.css">
 </head>
 <body>
-<header id="appNav"></header>
+<a class="skip-link" href="#main">Skip to content</a>
+<header id="appNav" class="site-header"></header>
 
-<main class="page">
-  <div class="page-head">
+<main class="wrap page" id="main" tabindex="-1">
+  <header class="page-head">
     <div>
+      <p class="kicker">Voice counter</p>
       <h1 id="shopTitle">KiranaVaani</h1>
       <p class="muted" id="shopSub"></p>
     </div>
-    <div class="lang-switch" id="langSwitch" role="group" aria-label="Language"></div>
+    <a class="text-link mobile-bill-link" href="#currentBill">See current bill</a>
+  </header>
+  <div class="language-toolbar">
+    <span class="kicker" id="languageLabel">Order language</span>
+    <div class="lang-switch" id="langSwitch" role="group" aria-labelledby="languageLabel">
+      <button type="button" class="lang-pill" data-lang="ta" aria-label="தமிழ் (Tamil)"><span lang="ta">தமிழ்</span></button>
+      <button type="button" class="lang-pill" data-lang="te" aria-label="తెలుగు (Telugu)"><span lang="te">తెలుగు</span></button>
+      <button type="button" class="lang-pill" data-lang="hi" aria-label="हिन्दी (Hindi)"><span lang="hi">हिन्दी</span></button>
+      <button type="button" class="lang-pill" data-lang="kn" aria-label="ಕನ್ನಡ (Kannada)"><span lang="kn">ಕನ್ನಡ</span></button>
+      <button type="button" class="lang-pill" data-lang="en">English</button>
+      <button type="button" class="lang-pill" data-lang="ml" aria-label="മലയാളം (Malayalam)"><span lang="ml">മലയാളം</span></button>
+      <button type="button" class="lang-pill" data-lang="mr" aria-label="मराठी (Marathi)"><span lang="mr">मराठी</span></button>
+    </div>
   </div>
 
-  <div class="layout">
-    <section class="card call-card" id="callCard" data-state="idle">
-      <div class="card-head">
+  <div class="counter-layout">
+    <section class="call-card" id="callCard" data-state="idle" aria-labelledby="chatTitle">
+      <header class="call-head">
         <div>
           <h2 id="chatTitle">Talk to the shop</h2>
-          <p class="muted" id="voiceStatus">Checking voice support…</p>
+          <p class="muted" id="voiceStatus" role="status">Checking voice support…</p>
         </div>
-        <span class="state-badge state-idle" id="stateBadge">Idle</span>
-      </div>
-
-      <div class="call-stage">
-        <div class="call-avatar" aria-hidden="true">
-          <svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 7h12l1.5 13.5a1 1 0 0 1-1 1.1H5.5a1 1 0 0 1-1-1.1L6 7Z"/><path d="M9 10V6a3 3 0 0 1 6 0v4"/></svg>
+        <div class="call-status">
+          <span class="state-badge" id="stateBadge">Idle</span>
+          <span class="call-timer" id="sessionTimer">00:00</span>
         </div>
-        <div class="wave" id="waveBox" data-state="idle" aria-hidden="true">
-          <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
-        </div>
-        <div class="call-timer" id="sessionTimer">00:00</div>
-        <p class="call-hint">Like a phone call with the shop — speak, and the agent answers. Speak over it to interrupt.</p>
-      </div>
-
-      <div class="session-controls">
+      </header>
+      <div class="session-controls actions">
         <button class="btn primary" id="startBtn" type="button">Start voice session</button>
-        <button class="btn warn" id="interruptBtn" type="button" disabled>Interrupt</button>
+        <button class="btn ghost" id="interruptBtn" type="button" disabled>Interrupt</button>
         <button class="btn ghost" id="endBtn" type="button" disabled>End session</button>
-        <button class="btn ghost" id="demoBtn" type="button">Try a demo order</button>
+        <button class="btn quiet" id="demoBtn" type="button">Try a demo order</button>
+      </div>
+      <div class="transcript-head">
+        <h3 id="transcriptTitle">Conversation</h3>
+        <div class="wave" id="waveBox" data-state="idle" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div>
+        <a class="text-link small" id="receiptLink" href="#summaryCard" hidden>View receipt</a>
+      </div>
+      <div class="transcript" id="transcript" role="log" aria-labelledby="transcriptTitle" tabindex="0">
+        <p class="muted empty-note" id="transcriptEmpty">Start talking, type an order or use one of the examples below.</p>
       </div>
 
-      <div class="transcript" id="transcript" aria-live="polite"></div>
+      <form class="composer" id="composer">
+        <label for="textInput">Type an order</label>
+        <div class="compose-row">
+          <input id="textInput" type="text" autocomplete="off" placeholder="e.g. Aashirvaad atta 5 kg">
+          <button class="btn primary" id="sendBtn" type="submit">Send</button>
+        </div>
+      </form>
+      <div class="chips" id="chips" aria-label="Example orders"></div>
 
-      <div class="chips" id="chips"></div>
-
-      <div class="composer">
-        <input id="textInput" type="text" autocomplete="off" placeholder="Type your order… e.g. Aashirvaad atta 5 kg" aria-label="Type your order">
-        <button class="btn primary" id="sendBtn" type="button">Send</button>
-      </div>
-      <p class="hint">Tip: speak or type in any of the seven languages. Try “Basmati rice 2 kg” — it is out of stock, and the agent will suggest Ponni rice instead. Say “yes” and it is added.</p>
-
-      <section class="card summary-card" id="summaryCard" hidden>
-        <h2>Session summary</h2>
+      <section class="summary-card ticket" id="summaryCard" tabindex="-1" hidden>
+        <h2>Receipt</h2>
         <div id="summaryBody"></div>
-        <button class="btn primary block" id="newSessionBtn" type="button">Start a new session</button>
+        <button class="btn primary" id="newSessionBtn" type="button">Start a new session</button>
       </section>
     </section>
 
-    <aside class="side">
-      <section class="card bill-card">
+    <aside class="counter-side" aria-label="Bill and stock">
+      <section class="bill-card ticket" id="currentBill" tabindex="-1" aria-labelledby="billTitle">
         <div class="card-head">
-          <h2>Your bill</h2>
-          <span class="pill" id="billCount">0 items</span>
+          <h2 id="billTitle">Current bill</h2>
+          <span class="kicker" id="billCount">0 items</span>
         </div>
-        <div id="billLines" class="bill-lines">
-          <p class="muted empty-note">Nothing yet — order something and it appears here.</p>
-        </div>
-        <div class="bill-total"><span>Total</span><strong id="billTotal">₹0.00</strong></div>
+        <div id="billLines" class="bill-lines"></div>
+        <div class="bill-total" aria-live="polite"><span>Total</span><strong id="billTotal">₹0.00</strong></div>
         <button class="btn primary block" id="payBtn" type="button" disabled>Pay with UPI</button>
       </section>
 
-      <section class="card qr-card" id="qrCard" hidden>
-        <h2>Scan to pay</h2>
-        <div class="qr-wrap"><img id="qrImg" alt="UPI QR code for the bill total"></div>
-        <p class="upi-link" id="upiLinkText"></p>
-        <p class="muted small">Pay with any UPI app — GPay, PhonePe, Paytm. Demo merchant VPA: <code id="qrVpa">kirana@okhdfcbank</code></p>
+      <section class="qr-card ticket" id="qrCard" aria-labelledby="paymentTitle" hidden>
+        <h2 id="paymentTitle">Scan to pay</h2>
+        <div class="qr-wrap"><img id="qrImg" width="220" height="220" alt="UPI QR code for this bill"></div>
+        <a class="text-link" id="upiLinkText">Open in a UPI app</a>
+        <p class="muted small">Payee UPI ID <code id="qrVpa"></code>. Check the payee in your payment app before sending money.</p>
       </section>
 
-      <section class="card signals-card">
-        <div class="card-head">
-          <h2>Restock signals</h2>
-          <span class="pill" id="signalCount">0</span>
-        </div>
-        <ul id="signalList" class="signal-list">
-          <li class="muted empty-note">Out-of-stock requests land here so the shop knows what to reorder.</li>
-        </ul>
+      <section class="side-section">
+        <div class="card-head"><h2>Restock signals</h2><span class="kicker" id="signalCount">0</span></div>
+        <ul id="signalList" class="signal-list"></ul>
       </section>
 
-      <section class="card shelf-card">
-        <div class="card-head"><h2>On the shelf</h2><span class="pill" id="shelfCount"></span></div>
+      <details class="side-section shelf-card">
+        <summary><span>On the shelf</span><span class="kicker" id="shelfCount"></span></summary>
         <div id="shelfGrid" class="shelf-grid"></div>
-      </section>
+      </details>
     </aside>
   </div>
 </main>
-
-<footer class="foot">
-  <p>Voice uses Sarvam AI when a key is configured in Settings, otherwise your browser's free Web Speech API. Typing always works. No account, no server — the session runs in this page.</p>
+<footer class="foot wrap">
+  <span>KiranaVaani</span>
+  <span>Typing is available with any voice engine.</span>
+  <a href="privacy.html">Privacy and data</a>
 </footer>
-
-<script src="vendor/qrcode.js"></script>
-<script type="module" src="counter.js"></script>
+<script type="module" src="./counter.js"></script>
 </body>
 </html>

@@ -91,8 +91,7 @@ export function getSettings(shop) {
 export function saveSettings(shopId, patch) {
   const shop = SHOPS.find((s) => s.id === shopId) || SHOPS[0];
   const next = { ...getSettings(shop), ...patch };
-  storeSet(KEYS.settings(shop.id), next);
-  return next;
+  return storeSet(KEYS.settings(shop.id), next) ? next : null;
 }
 
 // ---------- Sarvam API key (browser only, never in the repo) ----------

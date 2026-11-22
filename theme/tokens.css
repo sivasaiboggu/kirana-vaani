@@ -1,0 +1,158 @@
+/* KiranaVaani color, type, spacing and motion. See tokens.json for measured contrast. */
+:root {
+  color-scheme: light dark;
+  --neutral-01: #fffdf8;
+  --neutral-02: #f8f4eb;
+  --neutral-03: #f1ebe0;
+  --neutral-04: #e7ded0;
+  --neutral-05: #d8cdbc;
+  --neutral-06: #bfb4a5;
+  --neutral-07: #978b7a;
+  --neutral-08: #817666;
+  --neutral-09: #62594e;
+  --neutral-10: #463e35;
+  --neutral-11: #2b2620;
+  --neutral-12: #1b1814;
+  --blue-ink: #2f43a0;
+  --blue-pressed: #23347f;
+  --blue-wash: #eeeffb;
+  --blue-light: #b2beff;
+  --blue-bright: #c8d1ff;
+  --blue-deep: #2b3152;
+  --ink-deep: #141219;
+  --red-ink: #91392e;
+  --red-light: #f6ada0;
+  --amber-ink: #794511;
+  --amber-light: #f1be7b;
+  --green-ink: #286145;
+  --green-light: #98d3ae;
+  --qr-white: #ffffff;
+  --qr-black: #000000;
+  --space-4: 0.25rem;
+  --space-8: 0.5rem;
+  --space-12: 0.75rem;
+  --space-16: 1rem;
+  --space-20: 1.25rem;
+  --space-24: 1.5rem;
+  --space-32: 2rem;
+  --space-40: 2.5rem;
+  --space-48: 3rem;
+  --space-56: 3.5rem;
+  --space-64: 4rem;
+  --space-72: 4.5rem;
+  --space-80: 5rem;
+  --space-96: 6rem;
+  --space-112: 7rem;
+  --radius-control: 4px;
+  --radius-sheet: 0px;
+  --depth-1: inset 0 0 0 1px var(--rule);
+  --depth-2: 0 1px 2px rgb(17 12 6 / 10%), 0 4px 12px rgb(17 12 6 / 8%);
+  --depth-3: 0 2px 4px rgb(17 12 6 / 14%), 0 12px 32px rgb(17 12 6 / 20%);
+  --font-ui: "Bricolage Grotesque", "Noto Sans Tamil", "Noto Sans Telugu", "Noto Sans Devanagari", "Noto Sans Kannada", "Noto Sans Malayalam", system-ui, sans-serif;
+  --font-mono: ui-monospace, "Cascadia Code", Consolas, monospace;
+  --type-body: clamp(1rem, 0.96rem + 0.18vw, 1.125rem);
+  --type-hero: clamp(3rem, 1.65rem + 4.9vw, 6.25rem);
+  --type-title: clamp(2.5rem, 1.85rem + 2.6vw, 4.5rem);
+  --type-section: clamp(1.75rem, 1.25rem + 1.8vw, 3rem);
+  --measure: 68ch;
+  --motion-fast: 160ms;
+  --motion-enter: 240ms;
+  --motion-ease: cubic-bezier(.22, .9, .32, 1);
+  --canvas: var(--neutral-02);
+  --paper: var(--neutral-01);
+  --surface: var(--neutral-03);
+  --stripe: var(--neutral-04);
+  --rule: var(--neutral-05);
+  --edge: var(--neutral-08);
+  --muted: var(--neutral-09);
+  --ink: var(--neutral-12);
+  --accent: var(--blue-ink);
+  --accent-press: var(--blue-pressed);
+  --accent-wash: var(--blue-wash);
+  --on-accent: var(--neutral-01);
+  --danger: var(--red-ink);
+  --warning: var(--amber-ink);
+  --success: var(--green-ink);
+  --ink-panel: var(--neutral-12);
+  --on-panel: var(--neutral-02);
+  --panel-muted: var(--neutral-06);
+}
+
+@supports (color: oklch(0.5 0 0)) {
+  :root {
+    --neutral-01: oklch(0.994198 0.006926 88.6411);
+    --neutral-02: oklch(0.967776 0.012667 86.8292);
+    --neutral-03: oklch(0.941744 0.016027 82.7920);
+    --neutral-04: oklch(0.903931 0.021232 79.0879);
+    --neutral-05: oklch(0.852611 0.026135 78.8979);
+    --neutral-06: oklch(0.774915 0.024365 75.8053);
+    --neutral-07: oklch(0.642531 0.028514 76.6622);
+    --neutral-08: oklch(0.571227 0.027408 77.2920);
+    --neutral-09: oklch(0.469254 0.020852 72.8157);
+    --neutral-10: oklch(0.369176 0.018615 70.4855);
+    --neutral-11: oklch(0.272042 0.013100 72.2773);
+    --neutral-12: oklch(0.211030 0.009018 75.1278);
+    --blue-ink: oklch(0.424580 0.152213 269.5723);
+    --blue-pressed: oklch(0.359365 0.128290 269.2305);
+    --blue-wash: oklch(0.954850 0.016081 282.2737);
+    --blue-light: oklch(0.815576 0.092766 276.0590);
+    --blue-bright: oklch(0.868978 0.064538 276.3012);
+    --blue-deep: oklch(0.324134 0.059198 274.7946);
+    --ink-deep: oklch(0.187897 0.014356 298.0868);
+    --red-ink: oklch(0.464443 0.121656 29.6002);
+    --red-light: oklch(0.813764 0.088463 30.3405);
+    --amber-ink: oklch(0.444053 0.094886 59.9139);
+    --amber-light: oklch(0.832775 0.102767 73.2061);
+    --green-ink: oklch(0.446013 0.076269 159.5614);
+    --green-light: oklch(0.816269 0.080037 156.6196);
+    --qr-white: oklch(1.000000 0.000000 0.0000);
+    --qr-black: oklch(0.000000 0.000000 0.0000);
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --canvas: var(--neutral-12);
+    --paper: var(--neutral-11);
+    --surface: var(--neutral-10);
+    --stripe: var(--neutral-10);
+    --rule: var(--neutral-09);
+    --edge: var(--neutral-07);
+    --muted: var(--neutral-06);
+    --ink: var(--neutral-02);
+    --accent: var(--blue-light);
+    --accent-press: var(--blue-bright);
+    --accent-wash: var(--blue-deep);
+    --on-accent: var(--ink-deep);
+    --danger: var(--red-light);
+    --warning: var(--amber-light);
+    --success: var(--green-light);
+    --ink-panel: var(--ink-deep);
+    --on-panel: var(--neutral-02);
+    --panel-muted: var(--neutral-06);
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --canvas: var(--neutral-12);
+  --paper: var(--neutral-11);
+  --surface: var(--neutral-10);
+  --stripe: var(--neutral-10);
+  --rule: var(--neutral-09);
+  --edge: var(--neutral-07);
+  --muted: var(--neutral-06);
+  --ink: var(--neutral-02);
+  --accent: var(--blue-light);
+  --accent-press: var(--blue-bright);
+  --accent-wash: var(--blue-deep);
+  --on-accent: var(--ink-deep);
+  --danger: var(--red-light);
+  --warning: var(--amber-light);
+  --success: var(--green-light);
+  --ink-panel: var(--ink-deep);
+  --on-panel: var(--neutral-02);
+  --panel-muted: var(--neutral-06);
+}
+
+:root[data-theme="light"] { color-scheme: light; }
