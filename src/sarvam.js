@@ -392,7 +392,7 @@ export class SarvamConversation {
   // The return shape matches KiranaAgent.process so the voice session can
   // use it interchangeably. On ANY Sarvam failure the local rules engine
   // answers instead — the shop never goes silent.
-  async reply(userText) {
+  async reply(userText, isCurrent = () => true) {
     const register = detectRegister(userText, this.lang);
     const messages = [
       { role: 'system', content: buildSystemPrompt({ shopName: this.shopName, lang: this.lang, register }) },
@@ -403,6 +403,7 @@ export class SarvamConversation {
     try {
       let message = await this.client.chat({ messages, tools: SHOP_TOOLS });
       for (let round = 0; round < SARVAM_CONFIG.maxToolRounds && message && message.tool_calls && message.tool_calls.length; round++) {
+        if (!isCurrent()) return null;
         messages.push(message);
         for (const call of message.tool_calls) {
           const result = executeToolCall(this.agent, call);
@@ -411,12 +412,14 @@ export class SarvamConversation {
         }
         message = await this.client.chat({ messages, tools: SHOP_TOOLS });
       }
+      if (!isCurrent()) return null;
       const replyText = (message && message.content ? String(message.content) : '').trim();
       if (!replyText) throw new SarvamError('Sarvam chat returned an empty reply');
       this.history.push({ role: 'user', content: userText });
       this.history.push({ role: 'assistant', content: replyText });
       return this._result(replyText, toolCalls, false, null);
     } catch (err) {
+      if (!isCurrent()) return null;
       // Fallback — and it must NOT double-bill: if tools already ran, the
       // cart already changed, so just read the bill instead of re-processing
       // the utterance.

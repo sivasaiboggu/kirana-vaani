@@ -291,10 +291,9 @@ export function getSessions(shopId) {
   return seeds;
 }
 
-export function recordSession(shopId, record) {
-  const sessions = getSessions(shopId);
-  const entry = {
-    id: record.id || `session-${Date.now()}`,
+export function makeSessionRecord(shopId, record) {
+  return {
+    id: record.id || `session-${globalThis.crypto?.randomUUID?.() || Date.now()}`,
     shopId,
     lang: record.lang || 'en',
     startedAt: record.startedAt || new Date().toISOString(),
@@ -306,7 +305,12 @@ export function recordSession(shopId, record) {
     bargeIns: record.bargeIns || 0,
     signals: record.signals || [],
   };
-  sessions.unshift(entry);
-  storeSet(KEYS.sessions(shopId), sessions.slice(0, 50));
-  return entry;
+}
+
+export function recordSession(shopId, record) {
+  const sessions = getSessions(shopId);
+  const entry = makeSessionRecord(shopId, record);
+  const previous = sessions.find(({ id }) => id === entry.id);
+  if (previous) return previous;
+  return storeSet(KEYS.sessions(shopId), [entry, ...sessions].slice(0, 50)) ? entry : null;
 }

@@ -3,17 +3,17 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>KiranaVaani — Voice orders for kirana shops</title>
-<meta name="description" content="Take kirana orders in seven languages. KiranaVaani checks the shelf, keeps a running bill and makes a UPI QR. Try an order without a microphone.">
+<title>KiranaVaani — Billing and khata for kirana shops</title>
+<meta name="description" content="Make a shop bill by voice or typing in seven languages. Check the shelf, generate a UPI QR, or put the bill on a customer’s khata.">
 <meta property="og:type" content="website">
-<meta property="og:title" content="KiranaVaani — Voice orders for kirana shops">
-<meta property="og:description" content="Take an order in seven languages, from the first request to a UPI QR.">
+<meta property="og:title" content="KiranaVaani — Billing and khata for kirana shops">
+<meta property="og:description" content="Make a bill, show a UPI QR and keep track of customer credit.">
 <meta property="og:image" content="https://sivasaiboggu.github.io/kirana-vaani/og-cover.png">
-<meta property="og:image:alt" content="KiranaVaani. Take orders in seven languages.">
+<meta property="og:image:alt" content="KiranaVaani. Bills and khata for kirana shops.">
 <link rel="icon" href="./mark.svg" type="image/svg+xml">
 <link rel="manifest" href="./manifest.webmanifest">
 <script src="/theme-init.js"></script>
-<link rel="preload" href="./assets/fonts/bricolage-grotesque-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="./assets/fonts/baloo-2-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="./styles.css">
 </head>
 <body class="home">
@@ -28,17 +28,17 @@
 
   <section class="hero" aria-labelledby="homeTitle">
     <div class="hero-copy">
-      <p class="kicker">Voice ordering for kirana shops</p>
-      <h1 id="homeTitle">Take orders in <em>seven languages.</em></h1>
-      <p class="hero-sub">Customers speak. KiranaVaani checks the shelf, adds up the bill and makes a UPI QR for the exact amount.</p>
+      <p class="kicker">For kirana shops</p>
+      <h1 id="homeTitle">Make the bill.<br>Keep the khata.</h1>
+      <p class="hero-sub">Speak or type an order in seven languages. Add items from the shelf, show a UPI QR, or save the bill to a customer’s khata.</p>
       <div class="actions">
         <a class="btn primary" href="counter.html?demo=ta">Try a sample order <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12h15m-6-6 6 6-6 6"/></svg></a>
-        <a class="text-link" href="dashboard.html">Open the dashboard</a>
+        <a class="text-link" href="dashboard.html">See the shop accounts</a>
       </div>
       <p class="muted small hero-note">The sample runs in your browser. No microphone needed.</p>
     </div>
     <div class="hero-visual">
-      <div class="plate-head"><span>Order playback</span><span id="heroTimer">00:00</span></div>
+      <div class="plate-head"><span>Sample order</span><span id="heroTimer">00:00</span></div>
       <figure class="soundbox ticket">
         <figcaption class="soundbox-head">
           <span class="kicker" id="heroShopLabel">Played back</span>
@@ -62,7 +62,7 @@
     <ol class="steps">
       <li><span class="step-num" aria-hidden="true">01</span><div><h3>Ask for an item</h3><p>Say “Aashirvaad atta 5 kg.” The counter listens like a call. You can interrupt if you need to change the order.</p></div></li>
       <li><span class="step-num" aria-hidden="true">02</span><div><h3>Check what’s in stock</h3><p>If Basmati is out, the counter can offer Ponni rice. It adds the substitute when the customer says yes and records what was requested.</p></div></li>
-      <li><span class="step-num" aria-hidden="true">03</span><div><h3>Read the bill and scan to pay</h3><p>Say “bill” to hear the items and total. Say “pay” for a UPI QR. When the session ends, the receipt and transcript go to the dashboard.</p></div></li>
+      <li><span class="step-num" aria-hidden="true">03</span><div><h3>Save the bill or show a UPI QR</h3><p>Say “bill” to hear the items and total. Say “pay” for a UPI QR. Save an unpaid bill to khata, or end the session to file the receipt.</p></div></li>
     </ol>
   </section>
 
@@ -78,7 +78,7 @@
       <div><dt>Shelf and substitutes</dt><dd>The counter checks stock as you order, explains how much is left, and asks before swapping an item.</dd></div>
       <div><dt>Running bill and UPI</dt><dd>See the price and quantity of each item. Set your shop’s UPI ID in Settings.</dd></div>
       <div><dt>Restock signals</dt><dd>See which items customers asked for, the quantity they wanted and the language they used.</dd></div>
-      <div><dt>Owner dashboard</dt><dd>Review today’s bills, top sellers and transcripts. Switch between three demo shops.</dd></div>
+      <div><dt>Owner dashboard</dt><dd>Review bills and transcripts. Record what a customer pays back and see what they still owe.</dd></div>
     </dl>
   </section>
 

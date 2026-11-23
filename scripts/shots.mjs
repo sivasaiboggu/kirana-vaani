@@ -59,6 +59,24 @@ try {
       await page.locator('#payBtn').click();
       await page.locator('#qrImg[src^="data:"]').waitFor();
       await capture('checkout', page.locator('#qrCard'));
+
+      // Available on v2. Both revisions still run the identical capture path above.
+      if (await page.locator('#khataBtn').count()) {
+        await page.goto(new URL('counter.html', base).href);
+        await page.getByRole('button', { name: 'English', exact: true }).click();
+        await page.locator('#textInput').fill('2 kg sugar');
+        await page.locator('#textInput').press('Enter');
+        await page.getByRole('button', { name: 'Add to khata' }).click();
+        await page.getByLabel('Customer name').fill('Lakshmi Rao');
+        await page.getByRole('button', { name: 'Save credit bill' }).click();
+        await page.getByRole('link', { name: 'Open khata' }).click();
+        const account = page.locator('.khata-account').filter({ hasText: 'Lakshmi Rao' });
+        await account.locator('summary').click();
+        await account.getByLabel('Payment received (₹)').fill('25.50');
+        await account.getByRole('button', { name: 'Record payment' }).click();
+        await account.locator('summary').filter({ hasText: '₹70.50 due' }).waitFor();
+        await capture('khata', page.locator('#khata'));
+      }
     } finally {
       await context.close();
     }

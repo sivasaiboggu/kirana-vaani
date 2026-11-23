@@ -39,8 +39,8 @@ async function visit(page, route, ready) {
   await page.evaluate(() => document.fonts.ready);
 }
 
-test('built pages fit a 320px phone and a 1280px desktop in light and dark', { timeout: 60000 }, async () => {
-  const cases = [[320, 'light'], [390, 'dark'], [1280, 'light'], [1280, 'dark']];
+test('built pages fit 320, 390, 768, 1280 and 1440px in light and dark', { timeout: 60000 }, async () => {
+  const cases = [320, 390, 768, 1280, 1440].flatMap((width) => ['light', 'dark'].map((theme) => [width, theme]));
   for (const [width, colorScheme] of cases) {
     const page = await browser.newPage({ viewport: { width, height: 844 }, colorScheme });
     try {
@@ -66,7 +66,7 @@ test('axe finds no WCAG 2.2 AA violations on the main pages in either mode', { t
     const context = await browser.newContext({ viewport: { width: 1280, height: 900 }, colorScheme });
     const page = await context.newPage();
     try {
-      for (const [route, ready] of pages.slice(0, 4)) {
+      for (const [route, ready] of pages) {
         await visit(page, route, ready);
         const { violations } = await new AxeBuilder({ page }).withTags([
           'wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa',
@@ -172,5 +172,92 @@ test('the installed shell opens typed counter and dashboard offline', { timeout:
     await visit(page, 'dashboard.html', '#sessionHistory table');
   } finally {
     await context.close();
+  }
+});
+
+
+test('shelf and bill edits carry through a saved khata bill and partial repayment', { timeout: 45000 }, async () => {
+  const context = await browser.newContext({ viewport: { width: 320, height: 844 }, colorScheme: 'dark', reducedMotion: 'reduce' });
+  const page = await context.newPage();
+  try {
+    await visit(page, 'counter.html', '#langSwitch .lang-pill[aria-pressed]');
+    await page.getByRole('button', { name: 'English', exact: true }).click();
+    await page.getByRole('searchbox', { name: 'Find an item' }).fill('sugar');
+    await page.getByRole('button', { name: 'Add Sugar', exact: true }).click();
+    await page.locator('#billTotal').filter({ hasText: '48.00' }).waitFor();
+    await page.getByRole('button', { name: 'Pay with UPI' }).click();
+    await page.locator('#qrImg[src^="data:"]').waitFor();
+    await page.getByRole('textbox', { name: 'Quantity for Sugar' }).fill('2.5');
+    await page.getByRole('button', { name: 'Set quantity for Sugar' }).click();
+    await page.locator('#billTotal').filter({ hasText: '120.00' }).waitFor();
+    assert.equal(await page.locator('#qrCard').isVisible(), false);
+    await page.getByRole('button', { name: 'Add to khata' }).click();
+    await page.getByLabel('Customer name').fill('Lakshmi Rao');
+    assert.deepEqual((await new AxeBuilder({ page }).analyze()).violations.map(({ id }) => id), []);
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth), 320);
+    await page.getByRole('button', { name: 'Save credit bill' }).click();
+    await page.getByRole('link', { name: 'Open khata' }).click();
+    const customer = page.locator('.khata-account').filter({ hasText: 'Lakshmi Rao' });
+    await customer.locator('summary').click();
+    const payment = customer.getByLabel('Payment received (₹)');
+    await payment.fill('121');
+    await customer.getByRole('button', { name: 'Record payment' }).click();
+    await customer.getByRole('alert').filter({ hasText: 'exceeds' }).waitFor();
+    await payment.fill('45.50');
+    await customer.getByRole('button', { name: 'Record payment' }).click();
+    await customer.locator('summary').filter({ hasText: '₹74.50 due' }).waitFor();
+    assert.deepEqual((await new AxeBuilder({ page }).analyze()).violations.map(({ id }) => id), []);
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth), 320);
+    await page.reload();
+    await customer.locator('summary').filter({ hasText: '₹74.50 due' }).click();
+    assert.match(await customer.innerText(), /Payment received\s+₹45\.50[\s\S]+Credit bill\s+₹120\.00/);
+    assert.match(await page.locator('#sessionHistory tbody tr').first().innerText(), /2.5 Sugar[\s\S]+₹120\.00/);
+    await page.getByLabel('Switch shop').selectOption('annapurna');
+    await page.getByText('No credit bills yet.', { exact: false }).waitFor();
+  } finally {
+    await page.context().close();
+  }
+});
+
+test('voice review can edit or discard recognition without changing the running bill', { timeout: 30000 }, async () => {
+  const page = await browser.newPage({ reducedMotion: 'reduce' });
+  try {
+    await page.addInitScript(() => {
+      window.SpeechRecognition = class {
+        start() { window.mockRecognition = this; }
+        stop() { this.onend?.(); }
+        abort() { this.onend?.(); }
+      };
+      Object.defineProperty(window, 'speechSynthesis', { value: {
+        speak: (utterance) => setTimeout(() => utterance.onend?.(), 0), cancel() {},
+      } });
+    });
+    await visit(page, 'counter.html', '#langSwitch .lang-pill[aria-pressed]');
+    await page.getByRole('button', { name: 'English', exact: true }).click();
+    const input = page.locator('#textInput');
+    await input.fill('1 kg sugar');
+    await input.press('Enter');
+    await page.locator('#billTotal').filter({ hasText: '48.00' }).waitFor();
+    await page.getByLabel('Review what the mic heard', { exact: false }).check();
+    await page.getByRole('button', { name: 'Start voice session' }).click();
+    await page.waitForFunction(() => window.mockRecognition);
+    const say = async (text) => {
+      await page.evaluate((transcript) => window.mockRecognition.onresult({ results: [[{ transcript }]] }), text);
+      await page.locator('#voiceDraft').waitFor();
+    };
+    await say('7 kg sugar');
+    assert.equal(await input.inputValue(), '7 kg sugar');
+    assert.equal(await page.locator('#billTotal').textContent(), '₹48.00');
+    await input.fill('2 kg sugar');
+    await input.press('Enter');
+    await page.locator('#billTotal').filter({ hasText: '144.00' }).waitFor();
+    await say('5 kg sugar');
+    await page.getByRole('button', { name: 'Discard' }).click();
+    assert.equal(await page.locator('#billTotal').textContent(), '₹144.00');
+    assert.equal(await page.locator('#voiceDraft').isVisible(), false);
+    await page.getByRole('button', { name: 'End session' }).click();
+    await page.locator('#summaryCard').waitFor();
+  } finally {
+    await page.context().close();
   }
 });

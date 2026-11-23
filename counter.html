@@ -9,17 +9,17 @@
 <link rel="icon" href="./mark.svg" type="image/svg+xml">
 <link rel="manifest" href="./manifest.webmanifest">
 <script src="/theme-init.js"></script>
-<link rel="preload" href="./assets/fonts/bricolage-grotesque-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="./assets/fonts/baloo-2-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
 <a class="skip-link" href="#main">Skip to content</a>
 <header id="appNav" class="site-header"></header>
 
-<main class="wrap page" id="main" tabindex="-1">
+<main class="wrap page counter-page" id="main" tabindex="-1">
   <header class="page-head">
     <div>
-      <p class="kicker">Voice counter</p>
+      <p class="kicker">Billing counter</p>
       <h1 id="shopTitle">KiranaVaani</h1>
       <p class="muted" id="shopSub"></p>
     </div>
@@ -42,7 +42,7 @@
     <section class="call-card" id="callCard" data-state="idle" aria-labelledby="chatTitle">
       <header class="call-head">
         <div>
-          <h2 id="chatTitle">Talk to the shop</h2>
+          <h2 id="chatTitle" lang="ta">கடையோடு பேசுங்கள்</h2>
           <p class="muted" id="voiceStatus" role="status">Checking voice support…</p>
         </div>
         <div class="call-status">
@@ -53,18 +53,13 @@
       <div class="session-controls actions">
         <button class="btn primary" id="startBtn" type="button">Start voice session</button>
         <button class="btn ghost" id="interruptBtn" type="button" disabled>Interrupt</button>
-        <button class="btn ghost" id="endBtn" type="button" disabled>End session</button>
-        <button class="btn quiet" id="demoBtn" type="button">Try a demo order</button>
+        <button class="btn quiet" id="endBtn" type="button" disabled>End session</button>
       </div>
-      <div class="transcript-head">
-        <h3 id="transcriptTitle">Conversation</h3>
-        <div class="wave" id="waveBox" data-state="idle" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div>
-        <a class="text-link small" id="receiptLink" href="#summaryCard" hidden>View receipt</a>
+      <label class="voice-review"><input id="reviewVoice" type="checkbox"> Review what the mic heard before adding it</label>
+      <div class="voice-draft" id="voiceDraft" hidden>
+        <p id="draftNotice" role="status">Check the words in the order field, then send or discard them.</p>
+        <button class="btn quiet" id="discardDraft" type="button">Discard</button>
       </div>
-      <div class="transcript" id="transcript" role="log" aria-labelledby="transcriptTitle" tabindex="0">
-        <p class="muted empty-note" id="transcriptEmpty">Start talking, type an order or use one of the examples below.</p>
-      </div>
-
       <form class="composer" id="composer">
         <label for="textInput">Type an order</label>
         <div class="compose-row">
@@ -72,7 +67,18 @@
           <button class="btn primary" id="sendBtn" type="submit">Send</button>
         </div>
       </form>
-      <div class="chips" id="chips" aria-label="Example orders"></div>
+      <div class="transcript-head">
+        <h3 id="transcriptTitle">Order conversation</h3>
+        <div class="wave" id="waveBox" data-state="idle" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div>
+        <a class="text-link small" id="receiptLink" href="#summaryCard" hidden>View receipt</a>
+      </div>
+      <div class="transcript" id="transcript" role="log" aria-labelledby="transcriptTitle" tabindex="0">
+        <p class="muted empty-note" id="transcriptEmpty">Speak, type or choose an item from the shelf to start a bill.</p>
+      </div>
+      <div class="sample-orders">
+        <div class="chips" id="chips" aria-label="Example orders"></div>
+        <button class="btn quiet" id="demoBtn" type="button">Try a demo order</button>
+      </div>
 
       <section class="summary-card ticket" id="summaryCard" tabindex="-1" hidden>
         <h2>Receipt</h2>
@@ -89,7 +95,21 @@
         </div>
         <div id="billLines" class="bill-lines"></div>
         <div class="bill-total" aria-live="polite"><span>Total</span><strong id="billTotal">₹0.00</strong></div>
-        <button class="btn primary block" id="payBtn" type="button" disabled>Pay with UPI</button>
+        <p class="counter-notice" id="billNotice" role="status"></p>
+        <div class="bill-actions">
+          <button class="btn primary block" id="payBtn" type="button" disabled>Pay with UPI</button>
+          <button class="btn ghost block" id="khataBtn" type="button" aria-controls="creditForm" aria-expanded="false" disabled>Add to khata</button>
+        </div>
+        <form id="creditForm" class="credit-form" hidden>
+          <p class="muted small">Save this bill as money the customer owes.</p>
+          <label for="creditName">Customer name</label>
+          <input id="creditName" type="text" list="creditCustomers" maxlength="60" autocomplete="off" required>
+          <datalist id="creditCustomers"></datalist>
+          <div class="actions">
+            <button class="btn primary" type="submit">Save credit bill</button>
+            <button class="btn quiet" id="cancelCredit" type="button">Cancel</button>
+          </div>
+        </form>
       </section>
 
       <section class="qr-card ticket" id="qrCard" aria-labelledby="paymentTitle" hidden>
@@ -104,11 +124,15 @@
         <ul id="signalList" class="signal-list"></ul>
       </section>
 
-      <details class="side-section shelf-card">
-        <summary><span>On the shelf</span><span class="kicker" id="shelfCount"></span></summary>
-        <div id="shelfGrid" class="shelf-grid"></div>
-      </details>
     </aside>
+    <section class="side-section shelf-card" aria-labelledby="shelfTitle">
+      <div class="card-head"><h2 id="shelfTitle">Shop shelf</h2><span class="kicker" id="shelfCount"></span></div>
+      <form class="shelf-search" id="shelfSearchForm" role="search">
+        <label for="shelfSearch">Find an item</label>
+        <input type="search" id="shelfSearch" placeholder="Rice, sugar, milk…" autocomplete="off">
+      </form>
+      <div id="shelfGrid" class="shelf-grid"></div>
+    </section>
   </div>
 </main>
 <footer class="foot wrap">

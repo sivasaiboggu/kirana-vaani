@@ -34,7 +34,7 @@ export class WebSpeechIO {
   }
 
   listen() {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
       const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (!SR) { resolve(null); return; }
       const rec = new SR();
@@ -43,17 +43,26 @@ export class WebSpeechIO {
       rec.interimResults = false;
       rec.maxAlternatives = 1;
       let done = false;
-      const finish = (value) => {
+      let timeout;
+      const finish = (value, error) => {
         if (done) return;
         done = true;
+        clearTimeout(timeout);
         try { rec.stop(); } catch (err) { /* already stopped */ }
-        resolve(value);
+        if (error) reject(error);
+        else resolve(value);
       };
       rec.onresult = (e) => {
         const last = e.results[e.results.length - 1];
         finish(last && last[0] ? last[0].transcript : null);
       };
-      rec.onerror = () => finish(null);
+      rec.onerror = ({ error }) => {
+        if (error === 'not-allowed' || error === 'service-not-allowed') {
+          finish(null, new DOMException('Microphone permission is unavailable.', 'NotAllowedError'));
+        } else if (error === 'audio-capture') {
+          finish(null, new DOMException('No microphone was found.', 'NotFoundError'));
+        } else finish(null);
+      };
       rec.onend = () => finish(null);
       try {
         rec.start();
@@ -62,7 +71,7 @@ export class WebSpeechIO {
         return;
       }
       // Give up after 15 s of silence; the session just listens again.
-      setTimeout(() => finish(null), 15000);
+      if (!done) timeout = setTimeout(() => finish(null), 15000);
     });
   }
 
@@ -92,7 +101,7 @@ export class WebSpeechIO {
 
   stopListening() {
     try {
-      if (this._recognition) this._recognition.stop();
+      if (this._recognition) this._recognition.abort?.();
     } catch (err) { /* ignore */ }
   }
 }
@@ -108,12 +117,18 @@ export class SarvamIO {
     this.speaker = speaker;
     this._audio = null;
     this._stream = null;
+    this._listenToken = 0;
   }
 
   // Record from the mic until ~1.2 s of silence (or 20 s max), then send the
   // clip to Saaras. Returns the transcript, or null when nothing was said.
   async listen() {
+    const token = ++this._listenToken;
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    if (token !== this._listenToken) {
+      stream.getTracks().forEach((track) => track.stop());
+      return null;
+    }
     this._stream = stream;
     const mimeType = (typeof MediaRecorder !== 'undefined'
       && MediaRecorder.isTypeSupported('audio/webm')) ? 'audio/webm' : undefined;
@@ -140,6 +155,7 @@ export class SarvamIO {
       let heard = false;
       const t0 = Date.now();
       const tick = () => {
+        if (token !== this._listenToken) { resolve(); return; }
         analyser.getByteTimeDomainData(buf);
         let sum = 0;
         for (let i = 0; i < buf.length; i++) {
@@ -159,6 +175,7 @@ export class SarvamIO {
     this._stream = null;
     try { await audioCtx.close(); } catch (err) { /* ignore */ }
 
+    if (token !== this._listenToken) return null;
     const blob = new Blob(chunks, { type: recorder.mimeType || 'audio/webm' });
     if (!blob.size) return null;
     const { transcript } = await this.client.transcribe({
@@ -205,6 +222,7 @@ export class SarvamIO {
   }
 
   stopListening() {
+    this._listenToken += 1;
     try {
       if (this._stream) this._stream.getTracks().forEach((t) => t.stop());
     } catch (err) { /* ignore */ }
