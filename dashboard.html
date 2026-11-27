@@ -9,17 +9,17 @@
 <link rel="icon" href="./mark.svg" type="image/svg+xml">
 <link rel="manifest" href="./manifest.webmanifest">
 <script src="/theme-init.js"></script>
-<link rel="preload" href="./assets/fonts/bricolage-grotesque-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="./assets/fonts/baloo-2-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
 <a class="skip-link" href="#main">Skip to content</a>
 <header id="appNav" class="site-header"></header>
 
-<main class="wrap page" id="main" tabindex="-1">
+<main class="wrap page ledger-page" id="main" tabindex="-1">
   <header class="page-head">
     <div>
-      <p class="kicker">Shop dashboard</p>
+      <p class="kicker">Shop accounts</p>
       <h1 id="shopTitle">Dashboard</h1>
       <p class="muted" id="shopSub"></p>
     </div>
@@ -34,7 +34,11 @@
     <a class="text-link" id="demoBannerLink" href="counter.html">Open the demo</a>
   </div>
 
-  <section class="day-ledger" aria-labelledby="dayTitle">
+  <nav class="ledger-index" aria-label="Shop accounts">
+    <a href="#sales">Today’s sales</a><a href="#khata">Customer khata</a><a href="#historyTitle">Recent sessions</a>
+  </nav>
+
+  <section class="day-ledger" id="sales" aria-labelledby="dayTitle">
     <div class="revenue">
       <h2 class="kicker" id="dayTitle">Today’s billed total</h2>
       <strong class="stat-value" id="statRevenue">₹0.00</strong>
@@ -43,9 +47,19 @@
     <dl class="stats-row">
       <div><dt>Orders</dt><dd id="statOrders">0</dd></div>
       <div><dt>Average bill</dt><dd id="statAvgBill">₹0.00</dd></div>
-      <div><dt>Voice sessions</dt><dd id="statSessions">0</dd></div>
+      <div><dt>Counter sessions</dt><dd id="statSessions">0</dd></div>
     </dl>
     <div class="lang-split"><span class="kicker">Sessions by language</span><div id="langSplit"></div></div>
+  </section>
+
+  <section class="khata-section" id="khata" aria-labelledby="khataTitle">
+    <div class="khata-intro">
+      <h2 id="khataTitle">Customer khata</h2>
+      <p class="muted">Record payments against the credit bills saved at this counter.</p>
+      <dl class="khata-due"><dt>Outstanding</dt><dd id="khataTotal">₹0.00</dd></dl>
+      <p id="khataStatus" class="counter-notice" role="status"></p>
+    </div>
+    <div id="khataAccounts" class="khata-accounts"></div>
   </section>
 
   <div class="dash-grid">

@@ -9,11 +9,13 @@
 
 import { KiranaAgent } from './src/agent.js';
 import { LANGUAGES, nameIn } from './src/catalog.js';
-import { formatINR } from './src/billing.js';
+import { formatINR, round2 } from './src/billing.js';
 import { detectLanguage, normalizeText } from './src/intent.js';
 import { VoiceSession, createDemoIO, createSilentIO, runDemoTurns, STATE_LABELS } from './src/session.js';
 import { shopCatalog } from './src/shops.js';
-import { getSettings, recordSession } from './src/store.js';
+import { getSettings, makeSessionRecord, recordSession } from './src/store.js';
+import { getKhataAccounts, postKhataBill } from './src/khata.js';
+import { icon } from './src/icons.js';
 import { initShell } from './src/shell.js';
 import { SarvamClient, SarvamConversation, loadSarvamKey, resolveVoiceEngine } from './src/sarvam.js';
 import { buildReceipt } from './src/receipt.js';
@@ -90,7 +92,11 @@ const settings = getSettings(shop);
 const items = shopCatalog(shop);
 const agent = new KiranaAgent({ items, vpa: settings.vpa, merchantName: settings.shopName });
 
-const state = { lang: settings.defaultLang || shop.lang || 'ta', demoRunning: false };
+const state = { lang: settings.defaultLang || shop.lang || 'ta', demoRunning: false, savingCredit: false, voiceDraft: false };
+let sessionRecordId;
+let creditEntry;
+let sessionKind;
+let textBeforeVoiceDraft = '';
 let session = null;
 let timerId = null;
 let qrTotal = null;
@@ -127,12 +133,12 @@ function engineNote() {
 
 // One responder for the session: Sarvam when configured (with its own local
 // fallback), otherwise the local rules engine directly.
-async function respond(text, lang) {
+async function respond(text, lang, isCurrent) {
   if (conversation) {
     const detected = detectLanguage(text, lang);
     conversation.lang = detected;
-    const r = await conversation.reply(text);
-    return { ...r, lang: r.lang || detected };
+    const r = await conversation.reply(text, isCurrent);
+    return r && { ...r, lang: r.lang || detected };
   }
   return agent.process(text, lang);
 }
@@ -174,30 +180,77 @@ function addSystemNote(text) {
 function renderBill() {
   const lines = agent.lines;
   const box = $('billLines');
-  box.innerHTML = '';
+  const previous = new Map([...box.querySelectorAll('.bill-row')].map((row) => [row.dataset.item, row]));
+  const fragment = document.createDocumentFragment();
   if (lines.length === 0) {
-    box.innerHTML = '<p class="muted empty-note">Items appear here as you order.</p>';
-  } else {
-    for (const line of lines) {
-      const row = document.createElement('div');
-      row.className = 'bill-row';
-      const name = document.createElement('span');
-      name.lang = state.lang;
-      name.textContent = nameIn(line.item, state.lang);
-      const qty = document.createElement('span');
-      qty.className = 'qty';
-      qty.textContent = `${line.qty} ${line.item.unit} × ${formatINR(line.item.price)}`;
-      const amt = document.createElement('span');
-      amt.className = 'amt';
-      amt.textContent = formatINR(line.total);
-      row.append(name, qty, amt);
-      box.appendChild(row);
+    const empty = document.createElement('p');
+    empty.className = 'muted empty-note';
+    empty.textContent = 'Choose something from the shelf, or speak or type an order.';
+    fragment.append(empty);
+  }
+  for (const line of lines) {
+    const itemName = nameIn(line.item, state.lang);
+    const row = document.createElement('div');
+    row.className = `bill-row${previous.has(line.item.id) ? '' : ' bill-row-new'}`;
+    row.dataset.item = line.item.id;
+    const name = document.createElement('strong');
+    name.lang = state.lang;
+    name.textContent = itemName;
+    const amount = document.createElement('span');
+    amount.className = 'amt';
+    amount.textContent = formatINR(line.total);
+    const unit = document.createElement('span');
+    unit.className = 'qty';
+    unit.textContent = `${line.qty} ${line.item.unit} × ${formatINR(line.item.price)}`;
+    row.append(name, amount, unit);
+    if (session?.active) {
+      const form = document.createElement('form');
+      form.className = 'quantity-form';
+      form.dataset.item = line.item.id;
+      form.noValidate = true;
+      const input = document.createElement('input');
+      input.name = 'quantity';
+      input.value = line.qty;
+      input.inputMode = 'decimal';
+      input.setAttribute('aria-label', `Quantity for ${itemName}`);
+      const update = document.createElement('button');
+      update.className = 'btn ghost';
+      update.textContent = 'Set';
+      update.setAttribute('aria-label', `Set quantity for ${itemName}`);
+      const remove = document.createElement('button');
+      remove.className = 'btn quiet';
+      remove.type = 'button';
+      remove.dataset.remove = line.item.id;
+      remove.textContent = 'Remove';
+      remove.setAttribute('aria-label', `Remove ${itemName}`);
+      form.append(input, update, remove);
+      row.append(form);
+    }
+    fragment.append(row);
+  }
+  const focus = document.activeElement?.closest('.quantity-form');
+  const focusItem = focus?.dataset.item;
+  const focusName = document.activeElement?.name;
+  box.replaceChildren(fragment);
+  if (focusItem) {
+    const form = [...box.querySelectorAll('.quantity-form')].find((entry) => entry.dataset.item === focusItem);
+    (form?.querySelector(focusName === 'quantity' ? 'input' : 'button') || $('currentBill')).focus({ preventScroll: true });
+  }
+  const total = formatINR(agent.total);
+  if ($('billTotal').textContent !== total) {
+    $('billTotal').textContent = total;
+    if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      $('billTotal').animate([{ transform: 'translateY(4px)', opacity: .55 }, { transform: 'translateY(0)', opacity: 1 }], { duration: 200, easing: 'ease-out' });
     }
   }
-  $('billTotal').textContent = formatINR(agent.total);
   if (qrTotal !== agent.total) $('qrCard').hidden = true;
   $('billCount').textContent = `${lines.length} item${lines.length === 1 ? '' : 's'}`;
-  $('payBtn').disabled = agent.total <= 0;
+  setBillControls();
+}
+
+function setBillControls() {
+  $('payBtn').disabled = agent.total <= 0 || state.savingCredit || !!creditEntry;
+  $('khataBtn').disabled = agent.total <= 0 || !session?.canFinish || sessionKind === 'demo' || state.savingCredit;
 }
 
 function renderSignals() {
@@ -226,10 +279,18 @@ function renderShelf() {
   // not the static catalogue — the agent clones the shelf per session, so
   // the catalogue itself is never mutated.
   const grid = $('shelfGrid');
-  $('shelfCount').textContent = `${agent.items.length} items`;
-  if (!grid.parentElement.open) return;
+  const query = normalizeText($('shelfSearch').value);
+  const matches = query ? agent.items.filter((item) =>
+    [...Object.values(item.names), ...item.aliases].some((name) => normalizeText(name).includes(query))) : agent.items;
+  $('shelfCount').textContent = `${matches.length} item${matches.length === 1 ? '' : 's'}`;
   const entries = document.createDocumentFragment();
-  for (const item of agent.items) {
+  if (matches.length === 0) {
+    const empty = document.createElement('p');
+    empty.className = 'muted';
+    empty.textContent = 'No items match. Try another name.';
+    entries.append(empty);
+  }
+  for (const item of matches) {
     const div = document.createElement('div');
     div.className = 'shelf-item';
     const nm = document.createElement('span');
@@ -242,10 +303,22 @@ function renderShelf() {
     const badge = document.createElement('span');
     badge.className = `stock-badge ${item.stock === 0 ? 'out' : item.stock <= 8 ? 'low' : 'in'}`;
     badge.textContent = item.stock === 0 ? 'Out of stock' : item.stock <= 8 ? `Only ${item.stock} left` : `In stock · ${item.stock}`;
-    div.append(nm, pr, badge);
+    const add = document.createElement('button');
+    add.type = 'button';
+    add.className = 'btn ghost shelf-add';
+    add.dataset.add = item.id;
+    add.disabled = item.stock <= 0;
+    add.textContent = '+ Add';
+    add.setAttribute('aria-label', `Add ${nm.textContent}`);
+    div.append(nm, pr, badge, add);
     entries.appendChild(div);
   }
+  const focusedItem = document.activeElement?.dataset.add;
   grid.replaceChildren(entries);
+  if (focusedItem) {
+    const button = [...grid.querySelectorAll('button')].find((entry) => entry.dataset.add === focusedItem && !entry.disabled);
+    (button || $('shelfSearch')).focus({ preventScroll: true });
+  }
 }
 
 async function showQR(upiLink) {
@@ -300,10 +373,19 @@ function setStateUI(next) {
   $('stateBadge').className = `state-badge state-${next}`;
   $('callCard').dataset.state = next;
   $('waveBox').dataset.state = next;
-  $('startBtn').disabled = activeEngine === 'none' || (!!session && session.active);
-  $('endBtn').disabled = !session || !session.active;
+  $('startBtn').disabled = activeEngine === 'none' || (session?.active && sessionKind !== 'silent');
+  $('reviewVoice').disabled = activeEngine === 'none' || sessionKind === 'demo';
+  $('demoBtn').disabled = !!session?.active || state.demoRunning;
+  $('endBtn').disabled = !session?.active || state.savingCredit || !$('creditForm').hidden;
+  setBillControls();
   $('interruptBtn').disabled = !session || session.state !== 'speaking';
-  if (next === 'listening') $('voiceStatus').textContent = 'Listening — speak now.';
+  if (next === 'listening') {
+    const message = state.voiceDraft ? 'Microphone paused while you review the order.'
+      : !$('creditForm').hidden && sessionKind === 'voice' ? 'Microphone paused while you save the bill.'
+      : sessionKind === 'voice' ? 'Listening — speak now.'
+      : sessionKind === 'demo' ? 'Playing the sample order.' : 'Ready for the next item.';
+    $('voiceStatus').textContent = message;
+  }
   if (next === 'thinking') $('voiceStatus').textContent = 'Thinking…';
   if (next === 'speaking') $('voiceStatus').textContent = 'Speaking. You can speak over the reply or choose Interrupt.';
   if (next === 'ended') $('voiceStatus').textContent = engineNote();
@@ -336,7 +418,7 @@ function isEcho(text) {
   const a = normalizeText(text);
   const b = normalizeText(lastAgentReply);
   if (!a || !b) return false;
-  return (a.length > 3 && b.includes(a)) || (b.length > 3 && a.includes(b));
+  return a === b || (Math.min(a.length, b.length) >= 24 && Math.min(a.length, b.length) / Math.max(a.length, b.length) >= .8 && (a.includes(b) || b.includes(a)));
 }
 
 function wrapGuarded(io) {
@@ -375,8 +457,15 @@ function onSessionEvent(ev) {
     if (ev.result && ev.result.showQR && ev.result.upiLink) showQR(ev.result.upiLink);
     else if (agent.total <= 0) $('qrCard').hidden = true;
   }
+  if (ev.type === 'voice-draft') showVoiceDraft(ev.text);
   if (ev.type === 'barge-in') addSystemNote('— interrupted, listening again —');
   if (ev.type === 'listen-error') {
+    if (ev.voiceUnavailable && sessionKind === 'voice') {
+      sessionKind = 'silent';
+      session.changeIO(buildIO('silent'));
+      session.resumeVoice();
+      setStateUI(session.state);
+    }
     $('voiceStatus').textContent = `Voice error: ${ev.error} — typing still works.`;
   }
   if (ev.type === 'summary') showSummary(ev.summary);
@@ -390,6 +479,7 @@ function newSession(kind) {
     lang: state.lang,
     respond,
     onEvent: onSessionEvent,
+    shouldReviewVoice: () => sessionKind === 'voice' && $('reviewVoice').checked,
   });
   session = s;
   return s;
@@ -401,6 +491,14 @@ async function startVoiceSession(kind = 'voice') {
   // (the old code never reset the agent, so session 2's bill and receipt
   // still contained session 1's items). Restock signals and the depleted
   // shelf stay — the shop really did sell those goods.
+  sessionKind = kind;
+  lastAgentReply = '';
+  sessionRecordId = globalThis.crypto?.randomUUID?.() || `session-${Date.now()}`;
+  creditEntry = null;
+  clearVoiceDraft();
+  closeCreditForm();
+  $('billNotice').textContent = '';
+  if (conversation) conversation.history.length = 0;
   agent.startNewSession();
   renderBill();
   renderSignals();
@@ -408,18 +506,23 @@ async function startVoiceSession(kind = 'voice') {
   $('qrCard').hidden = true;
   $('summaryCard').hidden = true;
   $('receiptLink').hidden = true;
-  $('transcript').replaceChildren();
+  const empty = document.createElement('p');
+  empty.id = 'transcriptEmpty';
+  empty.className = 'muted empty-note';
+  empty.textContent = 'Speak, type or choose an item from the shelf to start a bill.';
+  $('transcript').replaceChildren(empty);
   const s = newSession(kind);
   await s.start();
   startTimer();
   setStateUI('listening');
   // Greet through the session itself, so the first turn is a real turn.
-  s.receive(UI[state.lang].greetWord);
+  if (kind !== 'silent') s.receive(UI[state.lang].greetWord);
   return s;
 }
 
 async function endSession() {
-  if (!session || !session.active) return;
+  if (!session?.active || state.savingCredit) return;
+  clearVoiceDraft();
   stopTimer();
   await session.end();
 }
@@ -491,13 +594,19 @@ function showSummary(summary) {
 
   $('summaryCard').hidden = false;
   $('receiptLink').hidden = false;
-  // Save to the shop's session history for the dashboard.
-  recordSession(shop.id, {
-    ...summary,
-    turns: session ? session.transcript : [],
-    startedAt: summary.startedAt,
-    endedAt: summary.endedAt,
-  });
+  if (creditEntry) {
+    const saved = document.createElement('p');
+    saved.className = 'receipt-credit';
+    saved.append(`On khata for ${creditEntry.customer}. `);
+    const link = document.createElement('a');
+    link.href = 'dashboard.html#khata';
+    link.textContent = 'Open khata';
+    saved.append(link);
+    box.appendChild(saved);
+  } else if (!recordSession(shop.id, { ...summary, id: sessionRecordId, turns: session.transcript })) {
+    $('billNotice').textContent = 'This browser could not save the receipt to the dashboard.';
+  }
+  renderBill();
   setStateUI('ended');
 }
 
@@ -505,18 +614,21 @@ function showSummary(summary) {
 // yet, one starts in silent (text-only) mode.
 function handleTyped(text) {
   const clean = String(text || '').trim();
-  if (!clean) return;
+  if (!clean || state.savingCredit || !$('creditForm').hidden) return;
+  const previousText = state.voiceDraft ? textBeforeVoiceDraft : '';
+  if (state.voiceDraft) dismissVoiceDraft();
+  $('billNotice').textContent = '';
   if (!session || !session.active) {
     startVoiceSession('silent').then((s) => s.receive(clean));
   } else {
     session.receive(clean);
   }
-  $('textInput').value = '';
+  $('textInput').value = previousText;
   $('textInput').focus();
 }
 
 async function runDemo(lang, fast = false) {
-  if (state.demoRunning) return;
+  if (state.demoRunning || session?.active) return;
   state.demoRunning = true;
   $('demoBtn').disabled = true;
   const s = await startVoiceSession('demo');
@@ -526,10 +638,120 @@ async function runDemo(lang, fast = false) {
   // The bill reply is the longest one the demo speaks (~2.6 s in demo IO),
   // so the wait has to clear that, not just the inter-turn pause.
   await new Promise((r) => setTimeout(r, fast ? 3400 : 3600));
-  await endSession();
+  if (session === s) await endSession();
   state.demoRunning = false;
   $('demoBtn').disabled = false;
 }
+
+function showVoiceDraft(text) {
+  state.voiceDraft = true;
+  textBeforeVoiceDraft = $('textInput').value;
+  $('voiceDraft').hidden = false;
+  setStateUI(session.state);
+  $('textInput').value = text;
+  $('textInput').focus();
+}
+
+function clearVoiceDraft() {
+  if (state.voiceDraft) $('textInput').value = textBeforeVoiceDraft;
+  textBeforeVoiceDraft = '';
+  state.voiceDraft = false;
+  $('voiceDraft').hidden = true;
+}
+
+function dismissVoiceDraft() {
+  clearVoiceDraft();
+  if ($('creditForm').hidden) session?.resumeVoice();
+  if (session) setStateUI(session.state);
+}
+
+function closeCreditForm() {
+  $('creditForm').hidden = true;
+  $('khataBtn').setAttribute('aria-expanded', 'false');
+  if (!state.voiceDraft) session?.resumeVoice();
+  if (session) setStateUI(session.state);
+}
+
+$('discardDraft').addEventListener('click', () => {
+  dismissVoiceDraft();
+  $('textInput').focus();
+});
+$('khataBtn').addEventListener('click', () => {
+  if (!session?.canFinish) return;
+  $('qrCard').hidden = true;
+  $('creditForm').hidden = false;
+  $('khataBtn').setAttribute('aria-expanded', 'true');
+  $('creditCustomers').replaceChildren(...getKhataAccounts(shop.id).map(({ customer }) => new Option(customer)));
+  session.pauseVoice();
+  setStateUI(session.state);
+  $('creditName').focus();
+});
+$('cancelCredit').addEventListener('click', () => {
+  closeCreditForm();
+  $('khataBtn').focus();
+});
+$('creditForm').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  if (state.savingCredit || !session?.canFinish) return;
+  state.savingCredit = true;
+  const submit = event.submitter;
+  if (submit) submit.disabled = true;
+  $('cancelCredit').disabled = true;
+  setStateUI(session.state);
+  try {
+    const summary = session.summary();
+    const bill = makeSessionRecord(shop.id, {
+      ...summary, id: sessionRecordId, endedAt: new Date().toISOString(), turns: session.transcript,
+    });
+    creditEntry = await postKhataBill(shop.id, $('creditName').value, bill);
+    $('creditForm').reset();
+    clearVoiceDraft();
+    await session.end();
+    $('summaryCard').focus();
+    $('billNotice').textContent = `Saved to khata for ${creditEntry.customer}.`;
+  } catch (error) {
+    $('billNotice').textContent = error.message;
+  } finally {
+    state.savingCredit = false;
+    if (submit) submit.disabled = false;
+    $('cancelCredit').disabled = false;
+    if (creditEntry) closeCreditForm();
+    setStateUI(session.state);
+  }
+});
+
+async function editQuantity(id, quantity, { add = false } = {}) {
+  if (state.savingCredit || !$('creditForm').hidden) return;
+  if (session?.active && !session.canFinish) {
+    $('billNotice').textContent = 'Wait for the current order to finish before changing the bill.';
+    return;
+  }
+  if (!session?.active) await startVoiceSession('silent');
+  const current = agent.lines.find(({ item }) => item.id === id)?.qty || 0;
+  const item = agent.byId.get(id);
+  try {
+    agent.setQuantity(id, add ? round2(current + Math.min(1, item.stock)) : quantity);
+    $('billNotice').textContent = `${item.names.en} ${Number(quantity) === 0 && !add ? 'removed from' : 'updated on'} the bill.`;
+    session.interrupt();
+    renderBill();
+    renderShelf();
+  } catch (error) {
+    $('billNotice').textContent = error.message;
+  }
+}
+
+$('shelfGrid').addEventListener('click', (event) => {
+  const button = event.target.closest('button[data-add]');
+  if (button) editQuantity(button.dataset.add, null, { add: true });
+});
+$('billLines').addEventListener('submit', (event) => {
+  event.preventDefault();
+  editQuantity(event.target.dataset.item, event.target.elements.quantity.value);
+});
+$('billLines').addEventListener('click', (event) => {
+  const button = event.target.closest('button[data-remove]');
+  if (button) editQuantity(button.dataset.remove, 0);
+});
 
 // ---------- boot ----------
 
@@ -537,7 +759,10 @@ $('langSwitch').addEventListener('click', (event) => {
   const lang = event.target.closest('button')?.dataset.lang;
   if (!Object.hasOwn(UI, lang)) return;
   state.lang = lang;
-  if (session) session.lang = lang;
+  if (session) {
+    session.lang = lang;
+    if (session.active && sessionKind === 'voice') session.changeIO(buildIO('voice'));
+  }
   renderLangUI();
 });
 
@@ -551,20 +776,29 @@ $('engineBadge').textContent = activeEngine === 'sarvam'
     : 'Text only';
 
 renderLangUI();
-$('shelfGrid').parentElement.addEventListener('toggle', renderShelf);
+$('shelfSearch').addEventListener('input', renderShelf);
+$('shelfSearchForm').addEventListener('submit', (event) => event.preventDefault());
 renderSignals();
 setStateUI('idle');
 
-$('startBtn').addEventListener('click', () => startVoiceSession('voice'));
+$('startBtn').insertAdjacentHTML('afterbegin', icon('mic'));
+$('startBtn').addEventListener('click', () => {
+  if (sessionKind === 'silent' && session?.active) {
+    sessionKind = 'voice';
+    session.changeIO(buildIO('voice'));
+    setStateUI(session.state);
+  } else startVoiceSession('voice');
+});
 $('endBtn').addEventListener('click', endSession);
 $('interruptBtn').addEventListener('click', () => { if (session) session.interrupt(); });
 $('demoBtn').addEventListener('click', () => runDemo(state.lang, false));
-$('newSessionBtn').addEventListener('click', () => { $('summaryCard').hidden = true; startVoiceSession('voice'); });
+$('newSessionBtn').addEventListener('click', () => { startVoiceSession('silent'); $('textInput').focus(); });
 $('composer').addEventListener('submit', (event) => {
   event.preventDefault();
   handleTyped($('textInput').value);
 });
 $('payBtn').addEventListener('click', () => {
+  if (!$('creditForm').hidden || state.savingCredit) return;
   if (session && session.active) session.receive('pay');
   else {
     const r = agent.process('pay', state.lang);

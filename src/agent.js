@@ -307,6 +307,26 @@ export class KiranaAgent {
     return t.noOk;
   }
 
+  setQuantity(itemId, rawQuantity) {
+    const item = this.byId.get(itemId);
+    const qty = Number(rawQuantity);
+    const current = this.cart[itemId]?.qty || 0;
+    if (!item || String(rawQuantity).trim() === '' || !Number.isFinite(qty) || qty < 0 || round2(qty) !== qty ||
+        (!['kg', 'litre', 'dozen'].includes(item.unit) && !Number.isInteger(qty))) {
+      throw new Error('Enter a valid quantity for this item.');
+    }
+    const change = round2(qty - current);
+    if (change > item.stock) throw new Error(`Only ${item.stock} ${item.unit} left on the shelf.`);
+    if (change > 0) {
+      addToCart(this.cart, item, change);
+      this._decrementStock(item, change);
+      this.lastAdded = { item, qty: change, unit: item.unit };
+    } else if (change < 0) {
+      removeFromCart(this.cart, item, -change);
+      this._restoreStock(item, -change);
+    }
+  }
+
   get total() {
     return cartTotal(this.cart);
   }
@@ -382,10 +402,12 @@ export class KiranaAgent {
     if (intent.action === 'yes') {
       if (this.pendingSuggestions.length > 0) {
         const { item, qty, forItem } = this._takeSuggestion();
-        addToCart(this.cart, item, qty);
-        this._decrementStock(item, qty);
-        this.lastAdded = { item, qty, unit: item.unit };
-        let reply = this._pickYesAdded(t)(nameIn(item, lang), qtyText(qty, item.unit, lang), formatINR(this.total));
+        const available = Math.min(qty, item.stock);
+        if (available < qty) this.logSignal(item, qty, lang);
+        if (available > 0) this.setQuantity(item.id, round2((this.cart[item.id]?.qty || 0) + available));
+        let reply = available === 0 ? t.outOfStockNone(nameIn(item, lang))
+          : available < qty ? t.partial(nameIn(item, lang), qtyText(available, item.unit, lang), qtyText(qty, item.unit, lang))
+            : this._pickYesAdded(t)(nameIn(item, lang), qtyText(qty, item.unit, lang), formatINR(this.total));
         // Another offer was waiting behind this one — present it now, so a
         // second "yes" does something the customer was already told about.
         if (this.pendingSuggestions.length > 0) {

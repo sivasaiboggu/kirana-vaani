@@ -1,0 +1,142 @@
+{
+  "before": {
+    "index": {
+      "reportedAtUtc": "2026-11-23T03:36:03.740Z",
+      "lighthouseVersion": "13.6.0",
+      "browser": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+      "formFactor": "mobile",
+      "throttlingMethod": "simulate",
+      "scores": {
+        "performance": 99,
+        "accessibility": 100,
+        "best-practices": 100,
+        "seo": 100,
+        "agentic-browsing": 100
+      },
+      "lcpMs": 914,
+      "tbtMs": 113,
+      "cls": 0
+    },
+    "counter": {
+      "reportedAtUtc": "2026-11-23T03:36:27.835Z",
+      "lighthouseVersion": "13.6.0",
+      "browser": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+      "formFactor": "mobile",
+      "throttlingMethod": "simulate",
+      "scores": {
+        "performance": 96,
+        "accessibility": 100,
+        "best-practices": 100,
+        "seo": 60,
+        "agentic-browsing": 92
+      },
+      "lcpMs": 1354,
+      "tbtMs": 22,
+      "cls": 0.1197
+    },
+    "dashboard": {
+      "reportedAtUtc": "2026-11-23T03:36:51.830Z",
+      "lighthouseVersion": "13.6.0",
+      "browser": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+      "formFactor": "mobile",
+      "throttlingMethod": "simulate",
+      "scores": {
+        "performance": 83,
+        "accessibility": 100,
+        "best-practices": 100,
+        "seo": 60,
+        "agentic-browsing": 73
+      },
+      "lcpMs": 1300,
+      "tbtMs": 201,
+      "cls": 0.2645
+    },
+    "settings": {
+      "reportedAtUtc": "2026-11-23T03:37:15.888Z",
+      "lighthouseVersion": "13.6.0",
+      "browser": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+      "formFactor": "mobile",
+      "throttlingMethod": "simulate",
+      "scores": {
+        "performance": 100,
+        "accessibility": 100,
+        "best-practices": 100,
+        "seo": 60,
+        "agentic-browsing": 100
+      },
+      "lcpMs": 987,
+      "tbtMs": 18,
+      "cls": 0
+    }
+  },
+  "after": {
+    "index": {
+      "reportedAtUtc": "2026-11-23T03:42:59.919Z",
+      "lighthouseVersion": "13.6.0",
+      "browser": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+      "formFactor": "mobile",
+      "throttlingMethod": "simulate",
+      "scores": {
+        "performance": 100,
+        "accessibility": 100,
+        "best-practices": 100,
+        "seo": 100,
+        "agentic-browsing": 100
+      },
+      "lcpMs": 1069,
+      "tbtMs": 0,
+      "cls": 0
+    },
+    "counter": {
+      "reportedAtUtc": "2026-11-23T03:41:11.429Z",
+      "lighthouseVersion": "13.6.0",
+      "browser": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+      "formFactor": "mobile",
+      "throttlingMethod": "simulate",
+      "scores": {
+        "performance": 100,
+        "accessibility": 100,
+        "best-practices": 100,
+        "seo": 60,
+        "agentic-browsing": 100
+      },
+      "lcpMs": 1361,
+      "tbtMs": 27,
+      "cls": 0
+    },
+    "dashboard": {
+      "reportedAtUtc": "2026-11-23T03:43:11.137Z",
+      "lighthouseVersion": "13.6.0",
+      "browser": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+      "formFactor": "mobile",
+      "throttlingMethod": "simulate",
+      "scores": {
+        "performance": 100,
+        "accessibility": 100,
+        "best-practices": 100,
+        "seo": 60,
+        "agentic-browsing": 100
+      },
+      "lcpMs": 1015,
+      "tbtMs": 0,
+      "cls": 0
+    },
+    "settings": {
+      "reportedAtUtc": "2026-11-23T03:43:22.293Z",
+      "lighthouseVersion": "13.6.0",
+      "browser": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+      "formFactor": "mobile",
+      "throttlingMethod": "simulate",
+      "scores": {
+        "performance": 100,
+        "accessibility": 100,
+        "best-practices": 100,
+        "seo": 60,
+        "agentic-browsing": 100
+      },
+      "lcpMs": 1325,
+      "tbtMs": 12,
+      "cls": 0
+    }
+  }
+}

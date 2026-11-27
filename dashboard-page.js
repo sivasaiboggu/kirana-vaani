@@ -5,9 +5,10 @@
 // finish on the live counter is recorded here too.
 
 import { LANGUAGES } from './src/catalog.js';
-import { formatINR } from './src/billing.js';
+import { formatINR, round2 } from './src/billing.js';
 import { shopCatalog } from './src/shops.js';
 import { getSettings, getSessions } from './src/store.js';
+import { getKhataAccounts, getKhataEntries, khataKey, postKhataRepayment } from './src/khata.js';
 import { summarizeSessions } from './src/dashboard.js';
 import { loadSarvamKey, resolveVoiceEngine } from './src/sarvam.js';
 import { webSpeechSupported } from './src/voice.js';
@@ -26,7 +27,11 @@ $('engineBadge').textContent = engine === 'sarvam'
     ? 'Browser voice'
     : 'Text only';
 const items = shopCatalog(shop);
-const sessions = getSessions(shop.id);
+const sessions = [...getKhataEntries(shop.id).filter(({ kind }) => kind === 'bill').map(({ bill }) => bill), ...getSessions(shop.id)];
+sessions.sort((a, b) => {
+  const sampleOrder = Number(a.id.startsWith('seed-')) - Number(b.id.startsWith('seed-'));
+  return sampleOrder || Date.parse(b.endedAt) - Date.parse(a.endedAt);
+});
 const summary = summarizeSessions(sessions, items);
 
 $('shopTitle').textContent = settings.shopName;
@@ -83,7 +88,7 @@ if (summary.topSellers.length === 0) {
     track.setAttribute('aria-hidden', 'true');
     const fill = document.createElement('div');
     fill.className = 'bar-fill';
-    fill.style.width = `${(t.qty / max) * 100}%`;
+    fill.style.setProperty('--progress', t.qty / max);
     track.appendChild(fill);
     const val = document.createElement('span');
     val.className = 'bar-val';
@@ -152,7 +157,7 @@ if (sessions.length === 0) {
   for (const s of sessions) {
     const tr = body.insertRow();
     const time = document.createElement('td');
-    const date = new Date(s.startedAt);
+    const date = new Date(s.endedAt || s.startedAt);
     time.textContent = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     if (date.toDateString() !== new Date().toDateString()) time.textContent = date.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ' · ' + time.textContent;
     const lang = document.createElement('td');
@@ -161,6 +166,7 @@ if (sessions.length === 0) {
     itemsCell.textContent = (s.items || []).map((i) => `${i.qty} ${i.name}`).join(', ') || '—';
     const total = document.createElement('td');
     total.textContent = formatINR(s.total || 0);
+    if (s.id.startsWith('seed-')) time.append(element('small', 'sample-tag', 'Sample'));
     const trans = document.createElement('td');
     const details = document.createElement('details');
     const sum = document.createElement('summary');
@@ -190,3 +196,87 @@ if (sessions.length === 0) {
   scroller.appendChild(table);
   histBox.appendChild(scroller);
 }
+
+function element(tag, className, text) {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+
+const moneyDate = new Intl.DateTimeFormat('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+
+function renderKhata(openAccount) {
+  const accounts = getKhataAccounts(shop.id);
+  $('khataTotal').textContent = formatINR(round2(accounts.reduce((sum, account) => sum + account.balance, 0)));
+  const box = $('khataAccounts');
+  const open = new Set([...box.querySelectorAll('details[open]')].map(({ dataset }) => dataset.customer));
+  box.replaceChildren();
+  if (!accounts.length) {
+    const empty = element('p', 'muted', 'No credit bills yet. Use Add to khata on a bill at the counter.');
+    const link = element('a', 'text-link', 'Go to the counter');
+    link.href = 'counter.html';
+    box.append(empty, link);
+  }
+  for (const account of accounts) {
+    const details = element('details', 'khata-account');
+    details.dataset.customer = account.customerId;
+    details.open = open.has(account.customerId) || account.customerId === openAccount;
+    const heading = element('summary');
+    const balance = account.balance > 0 ? `${formatINR(account.balance)} due` : 'Settled';
+    heading.append(element('strong', '', account.customer), element('span', 'khata-balance', balance));
+    details.append(heading);
+    const history = element('ol', 'khata-history');
+    for (const { kind, at, bill, amount } of account.entries) {
+      const line = element('li');
+      const label = kind === 'bill' ? 'Credit bill' : 'Payment received';
+      const when = element('time', 'muted small', moneyDate.format(new Date(at)));
+      when.dateTime = at;
+      line.append(when, element('span', '', label), element('strong', '', formatINR(bill?.total ?? amount)));
+      history.append(line);
+    }
+    details.append(history);
+    if (account.balance > 0) details.append(repaymentForm(account));
+    box.append(details);
+    if (account.customerId === openAccount) heading.focus({ preventScroll: true });
+  }
+}
+
+function repaymentForm(account) {
+  const form = element('form', 'repayment-form');
+  const label = element('label', '', 'Payment received (₹)');
+  const input = element('input');
+  input.inputMode = 'decimal';
+  input.required = true;
+  label.append(input);
+  const submit = element('button', 'btn primary', 'Record payment');
+  const error = element('p', 'field-error small');
+  error.id = `payment-error-${encodeURIComponent(account.customerId)}`;
+  error.setAttribute('role', 'alert');
+  input.setAttribute('aria-describedby', error.id);
+  form.append(label, submit, error);
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (submit.disabled) return;
+    submit.disabled = true;
+    input.removeAttribute('aria-invalid');
+    error.textContent = '';
+    try {
+      const entry = await postKhataRepayment(shop.id, account.customerId, input.value);
+      $('khataStatus').textContent = `Recorded ${formatINR(entry.amount)} from ${entry.customer}.`;
+      renderKhata(account.customerId);
+    } catch (err) {
+      input.setAttribute('aria-invalid', 'true');
+      error.textContent = err.message;
+      input.focus();
+    } finally {
+      submit.disabled = false;
+    }
+  });
+  return form;
+}
+
+renderKhata();
+window.addEventListener('storage', (event) => {
+  if (event.key === khataKey(shop.id)) renderKhata();
+});

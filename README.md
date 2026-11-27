@@ -1,14 +1,15 @@
-# KiranaVaani — a voice agent for kirana shops
+# KiranaVaani — billing and khata for kirana shops
 
 A voice-first checkout agent for the neighbourhood kirana shop, built for the
 [#BuildForIndia Paytm Hackathon](https://www.linkedin.com/) idea: a customer
 speaks an order to the shop's soundbox in Tamil, Telugu, Hindi, Kannada,
 English, Malayalam or Marathi — the agent checks stock, suggests a substitute when something is
 out, keeps the running bill, and shows a UPI QR to pay. The shop owner gets a
-dashboard: today's orders, revenue, low-stock alerts, restock signals, top
-sellers and the full voice-session history.
+dashboard with orders, low stock, recent sessions and customer khata.
+The counter also supports direct shelf picking, bill edits and optional review of
+what the microphone heard before it reaches the bill.
 
-**The sample counter runs without a key.** The app is plain HTML, CSS and JavaScript, with a static production build.
+**The sample counter runs without a key.** The app is plain HTML, CSS and JavaScript, with a static production build. See the [marigold shop-bill design and verification notes](docs/marigold-counter.md).
 
 ## Pages
 

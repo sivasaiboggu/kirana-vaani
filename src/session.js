@@ -28,7 +28,7 @@ export const STATE_LABELS = {
 //   listen() -> Promise<string|null>   next final transcript, or null on silence/timeout
 //   speak(text, lang) -> { promise, cancel() }   promise resolves when speech ends or is cancelled
 export class VoiceSession {
-  constructor({ agent, io, lang = 'en', respond = null, onEvent = () => {} } = {}) {
+  constructor({ agent, io, lang = 'en', respond = null, onEvent = () => {}, shouldReviewVoice = () => false } = {}) {
     if (!agent) throw new Error('VoiceSession needs a KiranaAgent');
     if (!io) throw new Error('VoiceSession needs an IO (listen/speak)');
     this.agent = agent;
@@ -39,6 +39,7 @@ export class VoiceSession {
     // sarvam-105b first and falls back to this same local engine.
     this.respond = respond || ((text, l) => agent.process(text, l));
     this.onEvent = onEvent;
+    this.shouldReviewVoice = shouldReviewVoice;
     this.state = 'idle';
     this.transcript = []; // { who: 'user'|'agent', text, lang, at, action? }
     this.startedAt = null;
@@ -49,6 +50,8 @@ export class VoiceSession {
     this._turnQueue = [];
     this._pumping = false;
     this._listening = false;
+    this._voicePaused = false;
+    this._voiceEpoch = 0;
   }
 
   get elapsedMs() {
@@ -58,6 +61,28 @@ export class VoiceSession {
 
   get active() {
     return this.state !== 'idle' && this.state !== 'ended';
+  }
+
+  get canFinish() {
+    return this.active && this.state !== 'thinking' && this._turnQueue.length === 0;
+  }
+
+  pauseVoice() {
+    this._voicePaused = true;
+    this._voiceEpoch += 1;
+    this.io.stopListening?.();
+  }
+
+  resumeVoice() {
+    if (!this.active || !this._voicePaused) return;
+    this._voicePaused = false;
+    this._listenLoop(this._token);
+  }
+
+  changeIO(io) {
+    this.io.stopListening?.();
+    this.io = io;
+    this._listenLoop(this._token);
   }
 
   _setState(next) {
@@ -79,19 +104,29 @@ export class VoiceSession {
     if (this._listening) return;
     this._listening = true;
     try {
-      while (token === this._token && this.state !== 'ended') {
+      while (token === this._token && !this._voicePaused && this.state !== 'ended') {
         let text = null;
+        const io = this.io;
+        const epoch = this._voiceEpoch;
         try {
-          text = await this.io.listen();
+          text = await io.listen();
         } catch (err) {
-          this.onEvent({ type: 'listen-error', error: String((err && err.message) || err) });
+          if (token !== this._token || this._voicePaused) break;
+          const voiceUnavailable = ['NotAllowedError', 'NotFoundError', 'ServiceNotAllowedError'].includes(err?.name);
+          if (voiceUnavailable) this.pauseVoice();
+          this.onEvent({ type: 'listen-error', error: String((err && err.message) || err), voiceUnavailable });
           // back off a little so a broken mic does not spin the loop hot
           await new Promise((r) => setTimeout(r, 500));
           continue;
         }
-        if (token !== this._token || this.state === 'ended') break;
+        if (token !== this._token || this._voicePaused || this.state === 'ended') break;
         if (text == null || !String(text).trim()) continue; // silence/timeout — keep listening
-        this.receive(String(text).trim());
+        if (io !== this.io || epoch !== this._voiceEpoch) continue;
+        const clean = String(text).trim();
+        if (this.shouldReviewVoice()) {
+          this.pauseVoice();
+          this.onEvent({ type: 'voice-draft', text: clean });
+        } else this.receive(clean);
       }
     } finally {
       this._listening = false;
@@ -135,11 +170,13 @@ export class VoiceSession {
     this.transcript.push(userTurn);
     this.onEvent({ type: 'user-turn', turn: userTurn });
 
+    const isCurrent = () => token === this._token && this.state !== 'ended';
     let result;
     try {
-      result = await this.respond(text, this.lang);
+      result = await this.respond(text, this.lang, isCurrent);
     } catch (err) {
       // Last-resort fallback: the local rules engine never needs a network.
+      if (!isCurrent()) return;
       result = this.agent.process(text, this.lang);
     }
     if (token !== this._token || this.state === 'ended') return;
@@ -180,6 +217,7 @@ export class VoiceSession {
     if (this.state === 'idle') return this.summary();
     if (this.state === 'ended') return this.summary();
     this._token += 1;
+    this.pauseVoice();
     if (this._speakHandle) {
       try { this._speakHandle.cancel(); } catch (err) { /* already finished */ }
       this._speakHandle = null;
@@ -272,8 +310,10 @@ export function createDemoIO({ charsPerMs = 14, minMs = 350, maxMs = 2600 } = {}
 // Silent IO: for the typed fallback — turns arrive from the text box, speech
 // resolves immediately (nothing is spoken out loud).
 export function createSilentIO() {
+  let finish;
   return {
-    listen: () => new Promise(() => {}),
+    listen: () => new Promise((resolve) => { finish = resolve; }),
+    stopListening: () => finish?.(null),
     speak: () => ({ promise: Promise.resolve('done'), cancel: () => {} }),
   };
 }
